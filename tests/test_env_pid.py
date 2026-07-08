@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from controllers import PIDController
+from controllers import FuzzyVelocityController, PIDController
 from envs import Arm2DOFEnv, Arm2DOFEnvConfig
 from robot import inverse_kinematics
 
@@ -69,7 +69,49 @@ class EnvironmentAndPIDTests(unittest.TestCase):
         self.assertTrue(done)
         self.assertLessEqual(float(observation["distance"]), config.target_tolerance)
 
+    def test_fuzzy_output_direction(self) -> None:
+        controller = FuzzyVelocityController(
+            error_scale=1.0,
+            output_scale=1.0,
+            output_limits=(-1.0, 1.0),
+        )
+        output = controller.compute([1.0, -1.0], [0.0, 0.0], dt=0.1)
+
+        self.assertGreater(output[0], 0.0)
+        self.assertLess(output[1], 0.0)
+
+    def test_fuzzy_reaches_static_target(self) -> None:
+        config = Arm2DOFEnvConfig(
+            target=(1.1, 0.55),
+            dt=0.05,
+            max_joint_speed=2.0,
+            target_tolerance=1e-2,
+            max_steps=400,
+        )
+        env = Arm2DOFEnv(config)
+        observation = env.reset(q=[0.0, 0.0])
+        desired_q = inverse_kinematics(
+            config.target,
+            config.arm_config.link_lengths,
+            elbow="up",
+        )
+        controller = FuzzyVelocityController(
+            error_scale=[0.45, 0.75],
+            derivative_scale=[4.0, 4.0],
+            output_scale=config.max_joint_speed,
+            output_limits=(-config.max_joint_speed, config.max_joint_speed),
+        )
+
+        done = False
+        for _ in range(config.max_steps):
+            action = controller.compute(desired_q, observation["q"], config.dt)
+            observation, reward, done, info = env.step(action)
+            if done:
+                break
+
+        self.assertTrue(done)
+        self.assertLessEqual(float(observation["distance"]), config.target_tolerance)
+
 
 if __name__ == "__main__":
     unittest.main()
-

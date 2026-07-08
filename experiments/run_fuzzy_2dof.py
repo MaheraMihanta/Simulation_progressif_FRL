@@ -1,4 +1,4 @@
-"""Run the first PID control experiment on the 2-DOF kinematic arm."""
+"""Run the first fuzzy control experiment on the 2-DOF kinematic arm."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ if str(SRC) not in sys.path:
 
 matplotlib.use("Agg")
 
-from controllers import PIDController
+from controllers import FuzzyVelocityController
 from envs import Arm2DOFEnv, Arm2DOFEnvConfig
 from robot import inverse_kinematics
 from visualization import plot_control_simulation
@@ -37,10 +37,10 @@ def main() -> int:
         config.arm_config.link_lengths,
         elbow="up",
     )
-    controller = PIDController(
-        kp=[4.0, 4.0],
-        ki=[0.0, 0.0],
-        kd=[0.15, 0.15],
+    controller = FuzzyVelocityController(
+        error_scale=[0.45, 0.75],
+        derivative_scale=[4.0, 4.0],
+        output_scale=config.max_joint_speed,
         output_limits=(-config.max_joint_speed, config.max_joint_speed),
     )
 
@@ -66,7 +66,7 @@ def main() -> int:
     distance_history_array = np.asarray(distance_history)
     action_history_array = np.asarray(action_history)
 
-    output_path = ROOT / "results" / "figures" / "step_02_pid_2dof.png"
+    output_path = ROOT / "results" / "figures" / "step_03_fuzzy_2dof.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fig, _ = plot_control_simulation(
@@ -77,7 +77,7 @@ def main() -> int:
         config.target,
         link_lengths=config.arm_config.link_lengths,
         tolerance=config.target_tolerance,
-        title="Controle PID - bras 2DDL",
+        title="Controle flou - bras 2DDL",
     )
     fig.savefig(output_path, dpi=150)
 
