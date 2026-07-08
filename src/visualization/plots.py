@@ -75,6 +75,7 @@ def plot_control_simulation(
     tolerance: float | None = None,
     title: str = "Simulation bras 2DDL",
     snapshot_count: int = 7,
+    action_ylabel: str = "rad/s",
 ):
     """Plot trajectory, arm snapshots, error and command histories."""
 
@@ -175,7 +176,7 @@ def plot_control_simulation(
     ax_action.grid(True, alpha=0.3)
     ax_action.set_title("Commande articulaire")
     ax_action.set_xlabel("iteration")
-    ax_action.set_ylabel("rad/s")
+    ax_action.set_ylabel(action_ylabel)
 
     fig.suptitle(title)
     fig.tight_layout()

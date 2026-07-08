@@ -145,3 +145,7 @@ class FuzzyVelocityController:
             lower, upper = self.output_limits
             output = np.clip(output, lower, upper)
         return output
+
+
+class FuzzyAccelerationController(FuzzyVelocityController):
+    """Same fuzzy inference interpreted as joint acceleration commands."""

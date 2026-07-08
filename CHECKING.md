@@ -275,3 +275,95 @@ Decision :
   une estimation apprise par interaction avec l'environnement.
 - Ensuite, comparer PID, flou, value iteration et Q-learning sur les memes
   cibles.
+
+## Etape 6 - Dynamique 2 DDL et commande a couples
+
+Statut : OK
+
+Objectif :
+
+- Ajouter une dynamique realiste minimale avant de poursuivre vers le RL.
+- Faire fonctionner le PID et le controleur flou avec des actions physiques :
+  des couples moteurs, et non plus seulement des vitesses articulaires.
+
+Modele ajoute :
+
+```text
+M(q) q_ddot + C(q, q_dot) q_dot + G(q) + F q_dot = tau
+```
+
+Comportement valide :
+
+- L'environnement dynamique expose `q`, `q_dot`, `q_ddot`, `end_effector`,
+  `target`, `error`, `distance` et `speed`.
+- L'action est interpretee comme un couple articulaire.
+- Les couples, vitesses et limites articulaires sont bornes.
+- La gravite, les termes Coriolis/centrifuges et le frottement visqueux sont
+  pris en compte.
+- Les experiences PID et floues utilisent une commande a couple calcule.
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests
+python experiments/run_pid_dynamic_2dof.py
+python experiments/run_fuzzy_dynamic_2dof.py
+```
+
+Resultat des tests :
+
+```text
+Ran 22 tests in 1.998s
+OK
+```
+
+Resultat de l'experience PID dynamique :
+
+```text
+steps=131
+done=True
+truncated=False
+desired_joint_angles_rad=[-0.241865  1.650568]
+final_joint_angles_rad=[-0.241488  1.648567]
+final_distance=1.381611975529e-03
+final_speed=7.603435041909e-02
+mean_torque_norm=1.365817876057e+01
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_06_pid_dynamic_2dof.png
+```
+
+Resultat de l'experience floue dynamique :
+
+```text
+steps=360
+done=True
+truncated=False
+desired_joint_angles_rad=[-0.241865  1.650568]
+final_joint_angles_rad=[-0.242783  1.657823]
+final_distance=5.226555932306e-03
+final_speed=7.783967059054e-02
+mean_torque_norm=1.385326288206e+01
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_07_fuzzy_dynamic_2dof.png
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/robot/dynamics.py`
+- `src/envs/arm_2dof_dynamic_env.py`
+- `src/controllers/fuzzy.py`
+- `src/controllers/__init__.py`
+- `src/robot/__init__.py`
+- `src/envs/__init__.py`
+- `src/visualization/plots.py`
+- `experiments/run_pid_dynamic_2dof.py`
+- `experiments/run_fuzzy_dynamic_2dof.py`
+- `tests/test_dynamics.py`
+- `docs/modele_2ddl.md`
+
+Decision :
+
+- Le modele dynamique est maintenant fonctionnel et suffisamment stable pour
+  servir de base aux prochaines experiences RL.
+- Le PID dynamique converge plus vite que le controleur flou sur ce premier
+  reglage, mais les deux atteignent la cible avec une vitesse finale faible.
+- La prochaine etape recommandee est de formuler l'environnement RL dynamique :
+  etat `(q, q_dot, cible)` et action sous forme de couples discrets ou continus.
