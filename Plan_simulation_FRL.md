@@ -107,6 +107,8 @@ Construire un environnement de simulation simple, clair et reutilisable.
 - Module Python du bras 2 DDL.
 - Script de simulation autonome.
 - Graphiques de trajectoire, erreur et commande.
+- Simulation Python live interactive permettant de changer la cible, le
+  controleur et les perturbations pendant l'execution.
 
 ## 6. Phase 3 - Commande classique
 
@@ -494,4 +496,15 @@ Cette contribution est interessante car elle combine :
 
 ## 16. Prochaine action recommandee
 
-Commencer par le simulateur Python du bras 2 DDL, car il permettra de tester rapidement tous les concepts fondamentaux : etat, action, reward, politique, valeur d'etat, controle classique, logique floue et apprentissage.
+Exploiter le simulateur Python live avant le passage vers CoppeliaSim :
+
+```text
+python experiments/run_live_interactive_2dof.py
+python experiments/run_live_interactive_2dof.py --mode fuzzy_rl_safe --train-rl
+```
+
+Cette etape doit servir a valider l'interactivite : changement de cible en
+direct, perturbations, bascule PID/flou/flou+RL, lisibilite des courbes et
+stabilite du superviseur. Une fois ces comportements juges satisfaisants, le
+passage vers CoppeliaSim pourra se faire via un adaptateur qui conserve la meme
+interface de simulation.

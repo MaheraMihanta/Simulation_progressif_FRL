@@ -841,3 +841,132 @@ Decision :
 - Cette architecture est plus defendable pour un rapport : le RL ameliore la
   vitesse, mais le flou reste garant de la convergence quand le residu devient
   douteux.
+
+## Etape 13 - Simulation Python live interactive
+
+Statut : OK
+
+Objectif :
+
+- Passer des simulations batch vers une simulation Python manipulable en direct.
+- Conserver les composants deja valides : environnement dynamique, PID, flou,
+  et flou/RL residuel securise.
+- Preparer un noyau reutilisable plus tard avec CoppeliaSim.
+
+Fonctionnalites ajoutees :
+
+- Changement de cible pendant l'execution.
+- Bascule de controleur entre `pid`, `fuzzy` et `fuzzy_rl_safe`.
+- Pause, reset et perturbation externe ponctuelle.
+- Historique live de distance, vitesse, couple, reward et action residuelle.
+- Mode smoke test sans fenetre pour valider la boucle automatiquement.
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests
+python experiments/run_live_interactive_2dof.py --headless-smoke-test --steps 40 --mode pid
+python experiments/run_live_interactive_2dof.py --headless-smoke-test --steps 40 --mode fuzzy_rl_safe
+python -c "import matplotlib; matplotlib.use('Agg'); from experiments.run_live_interactive_2dof import LiveMatplotlibApp; from interactive import LiveArm2DOFSimulation; app=LiveMatplotlibApp(LiveArm2DOFSimulation(), steps_per_frame=1); app._update(0); print('ui_build=ok')"
+```
+
+Resultat des tests :
+
+```text
+Ran 39 tests in 3.511s
+OK
+```
+
+Resultat smoke test PID :
+
+```text
+mode=pid
+steps=40
+distance=2.096145320140e-01
+speed=2.951223355417e+00
+torque_norm=1.154153518689e+01
+message=mode=pid
+```
+
+Resultat smoke test flou/RL securise sans table apprise :
+
+```text
+policy_loaded=none; fuzzy_rl_safe starts with zero residuals
+mode=fuzzy_rl_safe
+steps=40
+distance=3.162214155168e-01
+speed=5.791416039268e+00
+torque_norm=1.493725954097e+01
+message=mode=fuzzy_rl_safe
+```
+
+Controle de construction UI :
+
+```text
+ui_build=ok
+```
+
+Fichiers principaux ajoutes :
+
+- `src/interactive/__init__.py`
+- `src/interactive/live_arm_2dof.py`
+- `experiments/run_live_interactive_2dof.py`
+- `tests/test_live_interactive_2dof.py`
+
+Commandes utiles :
+
+```text
+python experiments/run_live_interactive_2dof.py
+python experiments/run_live_interactive_2dof.py --mode pid
+python experiments/run_live_interactive_2dof.py --mode fuzzy_rl_safe --train-rl
+```
+
+Decision :
+
+- Le passage vers une simulation live Python est maintenant justifie.
+- CoppeliaSim ne doit pas encore remplacer cette couche : il faut d'abord
+  utiliser le live Python pour stabiliser les interactions, les scenarios et
+  les mesures.
+- La prochaine etape vers CoppeliaSim sera de creer un adaptateur qui expose la
+  meme logique `reset`, `set_target`, `step`, `apply_disturbance` vers une scene
+  2 DDL.
+
+## Etape 14 - Rapport court pour enseignant-chercheur
+
+Statut : OK
+
+Objectif :
+
+- Rediger un rapport court mais explicite pour convaincre de l'interet de
+  l'approche logique floue + apprentissage par renforcement.
+- Integrer les concepts de base, les formulations mathematiques utiles, l'etat
+  actuel du projet et les figures PNG produites.
+- Fournir une version source modifiable et une version PDF partageable.
+
+Livrables :
+
+- `reports/rapport_frl_flou_rl_enseignant.md`
+- `reports/build_teacher_report.py`
+- `results/report/rapport_frl_flou_rl_enseignant.pdf`
+
+Controles effectues :
+
+```text
+python reports/build_teacher_report.py
+python -m unittest discover -s tests
+```
+
+Resultats :
+
+```text
+report=E:\THESE\RL\Simuation_FRL\results\report\rapport_frl_flou_rl_enseignant.pdf
+Ran 39 tests in 3.409s
+OK
+```
+
+Decision :
+
+- Le rapport peut etre utilise comme support de discussion avec un
+  enseignant-chercheur.
+- La version Markdown reste la source principale a enrichir, tandis que le PDF
+  sert de version de presentation courte.
