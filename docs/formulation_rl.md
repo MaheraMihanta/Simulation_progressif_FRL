@@ -146,6 +146,71 @@ La politique optimale est ensuite :
 pi*(s) = argmax_a [R(s,a,s') + gamma V*(s')]
 ```
 
+## Q-learning tabulaire
+
+Apres la programmation dynamique, on ajoute une version apprise par interaction.
+La table `Q(s, a)` est initialisee, puis l'agent repete des episodes depuis un
+etat initial. A chaque transition observee, la mise a jour est :
+
+```text
+Q(s,a) <- Q(s,a) + alpha [r + gamma max_a' Q(s',a') - Q(s,a)]
+```
+
+avec :
+
+- `alpha` : taux d'apprentissage ;
+- `epsilon` : probabilite d'explorer une action aleatoire ;
+- `gamma` : facteur d'actualisation.
+
+La politique apprise est ensuite la politique gloutonne :
+
+```text
+pi_Q(s) = argmax_a Q(s,a)
+```
+
+Cette etape est importante car elle remplace le calcul exact de Bellman par une
+estimation construite a partir des experiences de l'agent. Dans le MDP discret
+actuel, on peut comparer directement la trajectoire Q-learning avec la solution
+obtenue par value iteration.
+
+## Q-learning dynamique residuel
+
+Pour passer vers le modele dynamique sans perdre immediatement la stabilite, on
+introduit une formulation hybride :
+
+```text
+q_ddot_cmd = q_ddot_PID + q_ddot_RL_residuel
+tau = M(q) q_ddot_cmd + C(q,q_dot)q_dot + G(q) + F q_dot
+```
+
+Le PID a couple calcule fournit une politique stabilisante de base. Le
+Q-learning ne choisit pas encore tout le couple moteur ; il choisit une
+correction discrete d'acceleration parmi :
+
+```text
+{0, +/-q1, +/-q2, combinaisons diagonales}
+```
+
+L'etat tabulaire utilise :
+
+```text
+s = (erreur_q1, erreur_q2, q1_dot, q2_dot)
+```
+
+apres discretisation. Le reward combine :
+
+- distance a la cible ;
+- vitesse articulaire ;
+- effort moteur ;
+- norme du residu RL ;
+- progres instantane vers la cible ;
+- bonus de succes.
+
+Cette formulation est volontairement prudente. Elle valide le passage de
+l'apprentissage tabulaire vers le simulateur dynamique a couples, tout en
+gardant une politique de base stable. L'etape suivante consistera a reduire
+progressivement l'aide du PID ou a apprendre directement des couples discrets.
+
 ## Role de cette etape
 
 Cette etape sert de pont entre la commande classique et le RL :

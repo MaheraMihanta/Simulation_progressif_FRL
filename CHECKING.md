@@ -367,3 +367,176 @@ Decision :
   reglage, mais les deux atteignent la cible avec une vitesse finale faible.
 - La prochaine etape recommandee est de formuler l'environnement RL dynamique :
   etat `(q, q_dot, cible)` et action sous forme de couples discrets ou continus.
+
+## Etape 7 - Q-learning tabulaire sur le MDP discret 2 DDL
+
+Statut : OK
+
+Objectif :
+
+- Remplacer la solution exacte de Bellman par une estimation apprise par
+  interaction.
+- Montrer le lien entre `Q(s, a)`, exploration epsilon-greedy, politique
+  gloutonne et rollout final.
+- Comparer la politique apprise avec la politique optimale calculee par value
+  iteration sur le meme MDP discret.
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests
+python experiments/run_q_learning_2dof.py
+```
+
+Resultat des tests :
+
+```text
+Ran 25 tests in 2.061s
+OK
+```
+
+Resultat de l'experience Q-learning :
+
+```text
+state_count=961
+action_count=9
+episodes=5000
+alpha=0.550
+gamma=0.950
+epsilon_start=1.000
+epsilon_end=0.050
+epsilon_final=0.050
+start_state=480
+q_start_max=4.407549242000e+00
+optimal_value_start=4.416102132407e+00
+rollout_steps=8
+optimal_rollout_steps=8
+done=True
+return=7.110746856383e+00
+discounted_return=4.407549242000e+00
+optimal_discounted_return=4.416102132407e+00
+success_rate_last_200=1.000
+mean_return_last_200=6.823436107716e+00
+actions=['q1+/q2+', 'q2+', 'q2+', 'q2+', 'q1-/q2+', 'q2+', 'q1-/q2+', 'q2+']
+final_summary={'state': 457, 'q': array([-0.20943951,  1.67551608]), 'end_effector': array([1.06177037, 0.58770583]), 'target': array([1.1 , 0.55]), 'distance': 0.05369575198995359, 'terminal': True}
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_08_q_learning_2dof.png
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/rl/q_learning.py`
+- `src/rl/__init__.py`
+- `experiments/run_q_learning_2dof.py`
+- `tests/test_q_learning.py`
+- `docs/formulation_rl.md`
+- `results/figures/step_08_q_learning_2dof.png`
+
+Decision :
+
+- Le Q-learning retrouve une politique efficace depuis l'etat initial : 8
+  actions, comme la solution optimale calculee par value iteration.
+- La valeur apprise au depart est tres proche de la valeur optimale
+  (`4.4075` contre `4.4161`), ce qui valide la coherence de la table Q.
+- Le taux de succes sur les 200 derniers episodes est de 100 %, signe que
+  l'agent a stabilise son comportement sur ce scenario.
+- La prochaine etape logique est de transferer cette approche vers la dynamique :
+  discretiser `(q, q_dot)` et apprendre des couples moteurs discrets, ou bien
+  utiliser le controleur flou/PID comme politique de depart pour faciliter
+  l'exploration.
+
+## Etape 8 - Q-learning dynamique residuel avec couple calcule
+
+Statut : OK
+
+Objectif :
+
+- Introduire le Q-learning dans l'environnement dynamique a couples.
+- Discretiser l'etat dynamique sous forme `(erreur_q1, erreur_q2, q1_dot,
+  q2_dot)`.
+- Garder une politique PID a couple calcule comme base stabilisante.
+- Faire apprendre a la table Q une correction discrete d'acceleration, ensuite
+  transformee en couple moteur par le modele dynamique inverse.
+
+Formulation utilisee :
+
+```text
+q_ddot_cmd = q_ddot_PID + q_ddot_RL_residuel
+tau = M(q) q_ddot_cmd + C(q,q_dot)q_dot + G(q) + F q_dot
+```
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests
+python experiments/run_dynamic_residual_q_learning_2dof.py
+```
+
+Resultat des tests :
+
+```text
+Ran 29 tests in 1.772s
+OK
+```
+
+Resultat de l'experience Q-learning dynamique residuel :
+
+```text
+state_count=11025
+action_count=9
+episodes=180
+alpha=0.450
+gamma=0.970
+epsilon_start=0.800
+epsilon_end=0.040
+epsilon_final=0.053
+residual_actions=[[ 0.  0.]
+ [-2.  0.]
+ [ 2.  0.]
+ [ 0. -2.]
+ [ 0.  2.]
+ [-2. -2.]
+ [-2.  2.]
+ [ 2. -2.]
+ [ 2.  2.]]
+desired_joint_angles_rad=[-0.241865  1.650568]
+success_rate_last_60=1.000
+mean_episode_length_last_60=163.617
+mean_return_last_60=-1.974362896949e+01
+learned_done=True
+learned_truncated=False
+learned_steps=131
+learned_final_distance=2.343111763649e-03
+learned_final_speed=7.656733298085e-02
+learned_mean_torque_norm=1.362461849483e+01
+baseline_done=True
+baseline_steps=131
+baseline_final_distance=1.381611975529e-03
+baseline_final_speed=7.603435041909e-02
+baseline_mean_torque_norm=1.365817876057e+01
+learned_unique_actions=['base', 'q1_res+', 'q1_res-/q2_res+', 'q1_res-/q2_res-', 'q2_res-']
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_09_dynamic_residual_q_learning_2dof.png
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/rl/dynamic_residual_q_learning.py`
+- `src/rl/__init__.py`
+- `experiments/run_dynamic_residual_q_learning_2dof.py`
+- `tests/test_dynamic_residual_q_learning.py`
+- `docs/formulation_rl.md`
+- `results/figures/step_09_dynamic_residual_q_learning_2dof.png`
+
+Decision :
+
+- Le passage vers le RL dynamique est valide dans une architecture hybride :
+  l'environnement physique reste le modele a couples, et la sortie finale est
+  bien un couple moteur.
+- Le controleur PID de base garantit la stabilite ; la table Q apprend des
+  residus discrets et utilise plusieurs actions non nulles pendant le rollout.
+- La politique apprise atteint la cible en 131 pas, comme le PID dynamique de
+  reference. Elle reduit legerement la norme moyenne du couple, mais donne une
+  distance finale un peu moins faible que le PID seul sur ce reglage.
+- Cette etape ne doit pas encore etre presentee comme un RL pur superieur au
+  PID. Elle sert de pont fiable vers les prochaines experiences :
+  apprentissage de couples discrets sans PID, reduction progressive du poids du
+  PID, ou hybridation floue/RL pour choisir les residus et les gains.
