@@ -137,6 +137,37 @@ def _generalization_summary() -> list[str]:
     return lines
 
 
+def _safe_generalization_summary() -> list[str]:
+    csv_path = TABLES / "step_12_fuzzy_residual_safe_generalization_2dof.csv"
+    if not csv_path.exists():
+        return ["Le tableau de generalisation securisee step_12 n'est pas encore disponible."]
+    with csv_path.open("r", newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    grouped: dict[str, dict[str, dict[str, str]]] = {}
+    for row in rows:
+        grouped.setdefault(row["target_id"], {})[row["method"]] = row
+
+    lines = [
+        "Resultats avec supervision de securite :",
+        "",
+    ]
+    for target_id, methods in grouped.items():
+        base = methods["fuzzy_base"]
+        safe = methods["fuzzy_rl_safe"]
+        delta_steps = int(safe["steps"]) - int(base["steps"])
+        delta_distance = float(safe["final_distance"]) - float(base["final_distance"])
+        delta_torque = float(safe["mean_torque_norm"]) - float(base["mean_torque_norm"])
+        switch = safe["residual_switch_step"] or "-"
+        lines.append(
+            f"{target_id}: delta pas={delta_steps:+d}, "
+            f"delta distance={delta_distance:+.4e}, "
+            f"delta couple={delta_torque:+.4e}, "
+            f"coupure residu={switch}"
+        )
+    return lines
+
+
 def build_report(output_path: Path = REPORT_PATH) -> Path:
     """Create the preliminary PDF report and return its path."""
 
@@ -188,12 +219,27 @@ def build_report(output_path: Path = REPORT_PATH) -> Path:
             "Synthese des resultats step_11",
             _generalization_summary(),
         )
+        _add_image_page(
+            pdf,
+            "Experience step_12 - generalisation securisee",
+            FIGURES / "step_12_fuzzy_residual_safe_generalization_2dof.png",
+            [
+                "Le superviseur coupe le residu lorsque la distance ne progresse plus.",
+                "Le taux de succes revient a cinq cibles sur cinq.",
+                "La robustesse augmente, mais certains gains de vitesse peuvent etre attenues.",
+            ],
+        )
+        _add_text_page(
+            pdf,
+            "Synthese des resultats step_12",
+            _safe_generalization_summary(),
+        )
         _add_text_page(
             pdf,
             "Prochaines etapes",
             [
                 "Entrainer l'agent hybride sur une distribution de cibles afin de reduire la dependance a une cible unique.",
-                "Ajouter un mecanisme de securite : appliquer le residu RL seulement lorsque son avantage estime est fiable, sinon revenir au controleur flou de base.",
+                "Remplacer le superviseur heuristique par une estimation explicite de confiance ou par une decision apprise.",
                 "Completer la comparaison globale : PID dynamique, flou dynamique, Q-learning residuel PID, Q-learning residuel flou, puis variantes multi-cibles.",
                 "Transformer ce rapport preliminaire en rapport final lorsque les experiences seront stabilisees.",
             ],

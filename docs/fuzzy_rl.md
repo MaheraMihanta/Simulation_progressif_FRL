@@ -158,3 +158,49 @@ La conclusion actuelle est donc :
 Pour le rapport final, cette experience justifie la prochaine etape : entrainer
 la politique hybride sur une distribution de cibles, et non plus sur une cible
 unique.
+
+## Supervision de securite du residu RL
+
+L'experience de generalisation brute montre un risque important : un residu RL
+utile sur certaines cibles peut degrader le controleur flou sur une autre cible.
+Pour limiter ce risque, une supervision simple a ete ajoutee au rollout.
+
+Principe :
+
+```text
+si la distance ne s'ameliore plus pendant N pas :
+    couper q_ddot_RL_residuel
+    revenir a q_ddot_cmd = q_ddot_flou
+```
+
+Dans l'experience actuelle :
+
+```text
+N = 100 pas
+progres minimal = 1e-4
+```
+
+La comparaison `step_12` donne :
+
+```text
+flou seul          : succes 5/5
+flou + Q brut      : succes 4/5
+flou + Q securise  : succes 5/5
+delta pas moyen du flou + Q securise = -55.0 pas
+delta couple moyen = +0.46 N.m
+```
+
+Le superviseur restaure la convergence sur `T4_high`, la cible qui echouait
+avec le residu brut. Il coupe aussi le residu sur `T2_diag`, ou la politique
+securisee devient proche du flou seul. Cette observation est utile : le
+superviseur augmente la robustesse, mais il peut reduire certains gains de
+vitesse lorsque la coupure est trop conservatrice.
+
+Cette etape donne une architecture plus defendable :
+
+- le controleur flou reste la politique de secours ;
+- le RL accelere la trajectoire lorsque son residu reste utile ;
+- la supervision limite les degradations hors cible d'entrainement.
+
+La prochaine amelioration consistera a remplacer cette coupure heuristique par
+une decision apprise ou par une estimation explicite de confiance du residu.

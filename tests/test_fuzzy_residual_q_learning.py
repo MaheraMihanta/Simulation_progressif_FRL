@@ -15,6 +15,7 @@ from envs import Arm2DOFDynamicEnvConfig
 from rl import (
     FuzzyDynamicStateEncoder,
     FuzzyResidualQLearningConfig,
+    FuzzyResidualSafetyConfig,
     aggregate_fuzzy_q_values,
     rollout_fuzzy_residual_q_policy,
     train_fuzzy_residual_q_learning,
@@ -100,6 +101,34 @@ class FuzzyResidualQLearningTests(unittest.TestCase):
         self.assertTrue(rollout.done)
         self.assertLessEqual(float(rollout.distance_history[-1]), env_config.target_tolerance)
         self.assertLessEqual(float(rollout.speed_history[-1]), env_config.speed_tolerance)
+
+    def test_safety_supervisor_falls_back_to_base_action(self) -> None:
+        env_config = Arm2DOFDynamicEnvConfig(
+            dt=0.01,
+            max_torque=(60.0, 35.0),
+            max_steps=10,
+        )
+        encoder = FuzzyDynamicStateEncoder()
+        learning_config = FuzzyResidualQLearningConfig(max_steps_per_episode=10)
+        q_value = np.zeros((encoder.n_rules, 9), dtype=float)
+        q_value[:, 1] = 1.0
+
+        rollout = rollout_fuzzy_residual_q_policy(
+            env_config,
+            q_value,
+            encoder,
+            config=learning_config,
+            safety_config=FuzzyResidualSafetyConfig(
+                patience=1,
+                min_progress=10.0,
+            ),
+        )
+
+        self.assertTrue(rollout.residual_disabled)
+        self.assertEqual(rollout.residual_switch_step, 1)
+        self.assertGreaterEqual(len(rollout.action_indices), 2)
+        self.assertEqual(rollout.action_indices[0], 1)
+        self.assertTrue(all(action == 0 for action in rollout.action_indices[1:]))
 
 
 if __name__ == "__main__":

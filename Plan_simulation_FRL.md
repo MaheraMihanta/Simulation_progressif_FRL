@@ -314,6 +314,12 @@ Une evaluation de generalisation est aussi disponible avec
 Q floue sur une cible, puis la teste sur plusieurs cibles. Les resultats sont
 exportes dans `results/tables/` afin d'etre repris dans le rapport final.
 
+Une variante securisee est ajoutee avec
+`experiments/run_fuzzy_residual_safe_generalization_2dof.py`. Elle conserve le
+controleur flou comme politique de secours : si le residu RL ne produit plus de
+progres pendant un nombre fixe de pas, le residu est coupe et la commande
+revient au flou seul.
+
 ## 10. Phase 7 - Comparaison globale
 
 ### Objectifs

@@ -766,3 +766,78 @@ Decision :
   dependance lourde : le script utilise `matplotlib` et `PdfPages`.
 - Le rapport actuel reste preliminaire. Il sert de canevas et ne remplace pas
   encore l'analyse finale multi-methodes.
+
+## Etape 12 - Generalisation flou/RL avec supervision de securite
+
+Statut : OK
+
+Objectif :
+
+- Corriger la faiblesse observee en generalisation brute : une cible pouvait
+  echouer lorsque le residu RL etait applique sans garde-fou.
+- Conserver le controleur flou comme politique de secours.
+- Evaluer trois methodes sur les memes cibles : flou seul, flou + Q brut,
+  flou + Q securise.
+
+Principe du superviseur :
+
+```text
+si la distance ne s'ameliore plus pendant 100 pas :
+    q_ddot_RL_residuel = 0
+    q_ddot_cmd = q_ddot_flou
+```
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests -p test_fuzzy_residual_q_learning.py
+python experiments/run_fuzzy_residual_safe_generalization_2dof.py
+```
+
+Resultat du test cible :
+
+```text
+Ran 5 tests in 0.886s
+OK
+```
+
+Resultat de l'experience :
+
+```text
+train_target=T1_train:(1.1, 0.55)
+target_count=5
+fuzzy_rule_count=81
+episodes=220
+safety_patience=100
+safety_min_progress=1.000000000000e-04
+baseline_successes=5/5
+raw_successes=4/5
+safe_successes=5/5
+safe_mean_step_delta=-55.000
+safe_mean_torque_delta=4.562615284085e-01
+safe_switches=[145, 248]
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_12_fuzzy_residual_safe_generalization_2dof.png
+csv=E:\THESE\RL\Simuation_FRL\results\tables\step_12_fuzzy_residual_safe_generalization_2dof.csv
+markdown=E:\THESE\RL\Simuation_FRL\results\tables\step_12_fuzzy_residual_safe_generalization_2dof.md
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/rl/fuzzy_residual_q_learning.py`
+- `src/rl/__init__.py`
+- `tests/test_fuzzy_residual_q_learning.py`
+- `experiments/run_fuzzy_residual_safe_generalization_2dof.py`
+- `docs/fuzzy_rl.md`
+- `results/figures/step_12_fuzzy_residual_safe_generalization_2dof.png`
+- `results/tables/step_12_fuzzy_residual_safe_generalization_2dof.csv`
+- `results/tables/step_12_fuzzy_residual_safe_generalization_2dof.md`
+
+Decision :
+
+- Le superviseur restaure le taux de succes a `5/5` tout en gardant un gain
+  moyen de `55` pas par rapport au flou seul.
+- Le prix a payer est un couple moyen legerement plus eleve (`+0.46 N.m`) et
+  une possible perte de gain quand la coupure est conservatrice.
+- Cette architecture est plus defendable pour un rapport : le RL ameliore la
+  vitesse, mais le flou reste garant de la convergence quand le residu devient
+  douteux.

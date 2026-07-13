@@ -259,6 +259,20 @@ class FuzzyResidualQLearningConfig:
 
 
 @dataclass(frozen=True)
+class FuzzyResidualSafetyConfig:
+    """Fallback supervisor for residual actions during policy rollout."""
+
+    patience: int = 100
+    min_progress: float = 1e-4
+
+    def __post_init__(self) -> None:
+        if self.patience <= 0:
+            raise ValueError("patience must be strictly positive.")
+        if self.min_progress < 0.0:
+            raise ValueError("min_progress must be non-negative.")
+
+
+@dataclass(frozen=True)
 class FuzzyResidualQLearningResult:
     """Training result for fuzzy residual Q-learning."""
 
@@ -286,6 +300,8 @@ class FuzzyResidualRollout:
     rewards: list[float]
     done: bool
     truncated: bool
+    residual_disabled: bool = False
+    residual_switch_step: int | None = None
 
 
 def fuzzy_residual_epsilon_at_episode(
@@ -461,6 +477,7 @@ def rollout_fuzzy_residual_q_policy(
     encoder: FuzzyDynamicStateEncoder,
     config: FuzzyResidualQLearningConfig | None = None,
     desired_q: ArrayLike2 | None = None,
+    safety_config: FuzzyResidualSafetyConfig | None = None,
 ) -> FuzzyResidualRollout:
     """Run one greedy rollout from a fuzzy residual Q table."""
 
@@ -493,10 +510,14 @@ def rollout_fuzzy_residual_q_policy(
     rewards: list[float] = []
     done = False
     info: dict[str, object] = {"truncated": False}
+    best_distance = previous_distance
+    stale_steps = 0
+    residual_disabled = False
+    residual_switch_step: int | None = None
 
     for _ in range(cfg.max_steps_per_episode):
         action_values = aggregate_fuzzy_q_values(q_table, rule_indices, rule_weights)
-        action = int(np.argmax(action_values))
+        action = 0 if residual_disabled else int(np.argmax(action_values))
         base_acceleration = controller.compute(goal_q, observation["q"], env_config.dt)
         residual_acceleration = actions[action]
         torque = inverse_dynamics_torque(
@@ -527,6 +548,15 @@ def rollout_fuzzy_residual_q_policy(
         action_indices.append(action)
         dominant_rule_indices.append(int(rule_indices[np.argmax(rule_weights)]))
         rewards.append(reward)
+        if safety_config is not None:
+            if distance < best_distance - safety_config.min_progress:
+                best_distance = distance
+                stale_steps = 0
+            else:
+                stale_steps += 1
+            if not residual_disabled and stale_steps >= safety_config.patience:
+                residual_disabled = True
+                residual_switch_step = len(action_indices)
         rule_indices, rule_weights = encoder.active_rules_from_observation(
             observation,
             goal_q,
@@ -546,6 +576,8 @@ def rollout_fuzzy_residual_q_policy(
         rewards=rewards,
         done=done,
         truncated=bool(info.get("truncated", False)),
+        residual_disabled=residual_disabled,
+        residual_switch_step=residual_switch_step,
     )
 
 
@@ -556,6 +588,7 @@ __all__ = [
     "FuzzyResidualQLearningConfig",
     "FuzzyResidualQLearningResult",
     "FuzzyResidualRollout",
+    "FuzzyResidualSafetyConfig",
     "RESIDUAL_ACTION_DIRECTIONS",
     "RESIDUAL_ACTION_NAMES",
     "aggregate_fuzzy_q_values",
