@@ -309,6 +309,11 @@ options B et C :
 Le detail est documente dans `docs/fuzzy_rl.md` et l'experience correspondante
 est `experiments/run_fuzzy_residual_q_learning_2dof.py`.
 
+Une evaluation de generalisation est aussi disponible avec
+`experiments/run_fuzzy_residual_generalization_2dof.py`. Elle entraine la table
+Q floue sur une cible, puis la teste sur plusieurs cibles. Les resultats sont
+exportes dans `results/tables/` afin d'etre repris dans le rapport final.
+
 ## 10. Phase 7 - Comparaison globale
 
 ### Objectifs
@@ -340,6 +345,16 @@ Comparer toutes les methodes dans un cadre commun.
 - Courbes d'effort de commande.
 - Courbes de reward.
 - Analyse qualitative et quantitative.
+- Script Python de generation du rapport PDF final a partir des figures,
+  tableaux et commentaires valides.
+
+### Preparation du rapport
+
+Le canevas de generation PDF est disponible dans `reports/build_report.py`. Il
+produit actuellement un rapport preliminaire dans
+`results/report/rapport_simulation_frl_preliminaire.pdf`. Ce fichier n'est pas
+encore le rapport final ; il sert a valider la chaine de redaction automatique
+avec Python.
 
 ## 11. Phase 8 - Extension vers 3 DDL puis 6 DDL
 

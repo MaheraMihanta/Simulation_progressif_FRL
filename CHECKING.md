@@ -649,3 +649,120 @@ Decision :
   une superiorite globale.
 - La prochaine etape scientifique est une comparaison multi-cibles et/ou un
   ajustement du reward pour controler explicitement l'effort et la douceur.
+
+## Etape 10 - Generalisation flou/RL sur plusieurs cibles
+
+Statut : OK
+
+Objectif :
+
+- Evaluer si une table Q floue apprise sur une cible se reutilise sur d'autres
+  cibles.
+- Produire des tableaux et une figure de synthese directement reutilisables
+  dans le futur rapport final.
+- Identifier les limites de robustesse de l'hybridation actuelle.
+
+Protocole :
+
+- Entrainement sur `T1_train = (1.10, 0.55)`.
+- Evaluation sans reentrainement sur cinq cibles.
+- Comparaison entre `fuzzy_base` et `fuzzy_rl`.
+
+Controles effectues :
+
+```text
+python experiments/run_fuzzy_residual_generalization_2dof.py
+```
+
+Resultat de l'experience :
+
+```text
+train_target=T1_train:(1.1, 0.55)
+target_count=5
+fuzzy_rule_count=81
+episodes=220
+success_rate_last_60=1.000
+baseline_successes=5/5
+learned_successes=4/5
+mean_step_delta=-41.200
+mean_torque_delta=3.608716297446e-01
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_11_fuzzy_residual_generalization_2dof.png
+csv=E:\THESE\RL\Simuation_FRL\results\tables\step_11_fuzzy_residual_generalization_2dof.csv
+markdown=E:\THESE\RL\Simuation_FRL\results\tables\step_11_fuzzy_residual_generalization_2dof.md
+```
+
+Tableau synthetique :
+
+```text
+T1_train : flou 360 pas, flou+Q 269 pas, succes 1/1
+T2_diag  : flou 361 pas, flou+Q 271 pas, succes 1/1
+T3_low   : flou 358 pas, flou+Q 269 pas, succes 1/1
+T4_high  : flou 400 pas, flou+Q 550 pas, succes 0/1 pour flou+Q
+T5_far   : flou 349 pas, flou+Q 263 pas, succes 1/1
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `experiments/run_fuzzy_residual_generalization_2dof.py`
+- `docs/fuzzy_rl.md`
+- `results/figures/step_11_fuzzy_residual_generalization_2dof.png`
+- `results/tables/step_11_fuzzy_residual_generalization_2dof.csv`
+- `results/tables/step_11_fuzzy_residual_generalization_2dof.md`
+
+Decision :
+
+- La representation floue donne une generalisation partielle : la politique
+  apprise accelere quatre cibles sur cinq.
+- La cible `T4_high` revele une faiblesse de robustesse : le residu appris peut
+  degrader une politique floue qui converge seule.
+- La prochaine etape recommandee est d'entrainer sur une distribution de cibles
+  ou d'ajouter un mecanisme de securite qui applique le residu RL seulement
+  lorsque son avantage est fiable.
+
+## Etape 11 - Squelette de rapport PDF genere par Python
+
+Statut : OK
+
+Objectif :
+
+- Preparer la chaine de generation du futur rapport final.
+- Assembler automatiquement le texte, les figures et les tableaux deja valides.
+- Produire un PDF preliminaire qui sera enrichi a mesure que les experiences
+  deviennent definitives.
+
+Controle effectue :
+
+```text
+python reports/build_report.py
+```
+
+Resultat :
+
+```text
+report=E:\THESE\RL\Simuation_FRL\results\report\rapport_simulation_frl_preliminaire.pdf
+```
+
+Controle global :
+
+```text
+python -m unittest discover -s tests
+```
+
+Resultat :
+
+```text
+Ran 33 tests in 2.113s
+OK
+```
+
+Fichiers principaux ajoutes :
+
+- `reports/build_report.py`
+- `results/report/rapport_simulation_frl_preliminaire.pdf`
+
+Decision :
+
+- La redaction finale pourra etre automatisee en Python sans ajouter de
+  dependance lourde : le script utilise `matplotlib` et `PdfPages`.
+- Le rapport actuel reste preliminaire. Il sert de canevas et ne remplace pas
+  encore l'analyse finale multi-methodes.

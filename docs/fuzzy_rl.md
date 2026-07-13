@@ -125,3 +125,36 @@ Cette etape correspond a deux pistes du plan initial :
 
 La prochaine comparaison doit donc mesurer l'apport de cette architecture sur
 plusieurs cibles et pas seulement sur une cible unique.
+
+## Generalisation sur plusieurs cibles
+
+L'experience `step_11` entraine la table Q floue sur la cible de reference
+`(1.10, 0.55)`, puis reutilise la meme table sur cinq cibles. Comme l'etat est
+exprime en erreur articulaire relative a la cible, cette experience teste si les
+regles apprises sont reutilisables.
+
+Resume :
+
+```text
+flou seul     : succes 5/5
+flou + Q flou : succes 4/5
+delta pas moyen flou/RL - flou seul = -41.2 pas
+delta couple moyen = +0.36 N.m
+```
+
+Sur quatre cibles, le residu appris accelere la convergence. Sur la cible
+`T4_high`, il degrade le comportement et n'atteint pas la tolerance. Cette
+degradation est importante : elle montre que la politique apprise sur une cible
+ne doit pas encore etre consideree comme globalement robuste.
+
+La conclusion actuelle est donc :
+
+- la representation floue donne une certaine capacite de generalisation ;
+- le residu RL peut accelerer le mouvement ;
+- l'agent doit encore apprendre avec plusieurs cibles, ou etre protege par un
+  mecanisme de selection qui revient au controleur flou si le residu est
+  incertain.
+
+Pour le rapport final, cette experience justifie la prochaine etape : entrainer
+la politique hybride sur une distribution de cibles, et non plus sur une cible
+unique.
