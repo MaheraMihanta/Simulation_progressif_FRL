@@ -540,3 +540,112 @@ Decision :
   PID. Elle sert de pont fiable vers les prochaines experiences :
   apprentissage de couples discrets sans PID, reduction progressive du poids du
   PID, ou hybridation floue/RL pour choisir les residus et les gains.
+
+## Etape 9 - Q-learning residuel avec etats flous
+
+Statut : OK
+
+Objectif :
+
+- Donner un sens explicite a la combinaison logique floue / apprentissage par
+  renforcement.
+- Utiliser le controleur flou dynamique comme politique de base stabilisante.
+- Utiliser les activations floues pour structurer l'espace d'etat du RL.
+- Faire apprendre a la table Q une correction discrete d'acceleration sur les
+  regles floues actives.
+
+Formulation utilisee :
+
+```text
+q_ddot_cmd = q_ddot_flou + q_ddot_RL_residuel
+tau = M(q) q_ddot_cmd + C(q,q_dot)q_dot + G(q) + F q_dot
+```
+
+Etat flou :
+
+```text
+x = (erreur_q1, erreur_q2, q1_dot, q2_dot)
+termes = negative, zero, positive
+nombre de regles = 3^4 = 81
+```
+
+La valeur d'action est agregee par les poids d'activation :
+
+```text
+Q_flou(x, a) = somme_i w_i(x) Q(regle_i, a)
+```
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests -p test_fuzzy_residual_q_learning.py
+python experiments/run_fuzzy_residual_q_learning_2dof.py
+```
+
+Resultat des tests :
+
+```text
+Ran 4 tests in 0.631s
+OK
+```
+
+Resultat de l'experience flou/RL :
+
+```text
+fuzzy_rule_count=81
+action_count=9
+episodes=220
+alpha=0.350
+gamma=0.970
+epsilon_start=0.750
+epsilon_end=0.040
+epsilon_final=0.040
+residual_actions=[[ 0.   0. ]
+ [-1.5  0. ]
+ [ 1.5  0. ]
+ [ 0.  -1.5]
+ [ 0.   1.5]
+ [-1.5 -1.5]
+ [-1.5  1.5]
+ [ 1.5 -1.5]
+ [ 1.5  1.5]]
+desired_joint_angles_rad=[-0.241865  1.650568]
+success_rate_last_60=1.000
+mean_episode_length_last_60=281.700
+mean_return_last_60=-6.654727943134e+01
+learned_done=True
+learned_truncated=False
+learned_steps=269
+learned_final_distance=5.537226137887e-03
+learned_final_speed=7.570873247219e-02
+learned_mean_torque_norm=1.442021393259e+01
+baseline_done=True
+baseline_steps=360
+baseline_final_distance=5.226555932306e-03
+baseline_final_speed=7.783967059054e-02
+baseline_mean_torque_norm=1.385326288206e+01
+learned_unique_actions=['base', 'q1_res+', 'q1_res-', 'q1_res-/q2_res-', 'q2_res-']
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_10_fuzzy_residual_q_learning_2dof.png
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/rl/fuzzy_residual_q_learning.py`
+- `src/rl/__init__.py`
+- `experiments/run_fuzzy_residual_q_learning_2dof.py`
+- `tests/test_fuzzy_residual_q_learning.py`
+- `docs/fuzzy_rl.md`
+- `docs/formulation_rl.md`
+- `results/figures/step_10_fuzzy_residual_q_learning_2dof.png`
+
+Decision :
+
+- L'hybridation flou/RL est maintenant explicite : le flou stabilise et
+  structure l'etat, le RL apprend un residu.
+- Sur la cible testee, l'hybride atteint la cible plus vite que le flou seul
+  (`269` pas contre `360`) avec une precision finale comparable.
+- Le couple moyen augmente legerement (`14.42 N.m` contre `13.85 N.m`) : le
+  resultat doit donc etre presente comme un compromis vitesse/effort, pas comme
+  une superiorite globale.
+- La prochaine etape scientifique est une comparaison multi-cibles et/ou un
+  ajustement du reward pour controler explicitement l'effort et la douceur.

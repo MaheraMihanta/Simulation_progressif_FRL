@@ -211,6 +211,51 @@ l'apprentissage tabulaire vers le simulateur dynamique a couples, tout en
 gardant une politique de base stable. L'etape suivante consistera a reduire
 progressivement l'aide du PID ou a apprendre directement des couples discrets.
 
+## Q-learning residuel avec etats flous
+
+La premiere combinaison explicite entre logique floue et RL remplace ensuite la
+base PID par une base floue :
+
+```text
+q_ddot_cmd = q_ddot_flou + q_ddot_RL_residuel
+```
+
+et utilise les memes equations dynamiques inverses pour produire le couple
+moteur. L'etat continu :
+
+```text
+x = (erreur_q1, erreur_q2, q1_dot, q2_dot)
+```
+
+est projete sur des termes linguistiques :
+
+```text
+negative, zero, positive
+```
+
+ce qui donne `3^4 = 81` regles floues. Une observation active plusieurs regles,
+et la valeur Q d'une action est la moyenne ponderee des valeurs des regles
+actives :
+
+```text
+Q_flou(x, a) = somme_i w_i(x) Q(regle_i, a)
+```
+
+La mise a jour Q-learning distribue ensuite l'erreur temporelle sur les regles
+actives :
+
+```text
+Q(regle_i, a) <- Q(regle_i, a) + alpha w_i(x) delta
+```
+
+Cette architecture donne un role complementaire aux deux approches :
+
+- le controleur flou fournit une politique stabilisante et lisible ;
+- les activations floues reduisent et structurent l'espace d'etat ;
+- le RL apprend quand appliquer un residu pour ameliorer le comportement.
+
+Le detail de cette architecture est donne dans `docs/fuzzy_rl.md`.
+
 ## Role de cette etape
 
 Cette etape sert de pont entre la commande classique et le RL :

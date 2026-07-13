@@ -290,6 +290,25 @@ Ensuite, tester l'option A pour obtenir une contribution plus innovante : un age
 - Analyse de la stabilite.
 - Discussion sur l'apport scientifique.
 
+### Implementation actuelle dans le projet
+
+Une premiere architecture hybride est maintenant disponible :
+
+```text
+q_ddot_cmd = q_ddot_flou + q_ddot_RL_residuel
+```
+
+Le controleur flou fournit la commande de base. Le Q-learning apprend une
+correction discrete d'acceleration sur une base de `81` regles floues issues de
+`(erreur_q1, erreur_q2, q1_dot, q2_dot)`. Cette implementation correspond aux
+options B et C :
+
+- structuration floue de l'espace d'etat RL ;
+- controleur flou utilise comme politique initiale stabilisante.
+
+Le detail est documente dans `docs/fuzzy_rl.md` et l'experience correspondante
+est `experiments/run_fuzzy_residual_q_learning_2dof.py`.
+
 ## 10. Phase 7 - Comparaison globale
 
 ### Objectifs
@@ -455,4 +474,3 @@ Cette contribution est interessante car elle combine :
 ## 16. Prochaine action recommandee
 
 Commencer par le simulateur Python du bras 2 DDL, car il permettra de tester rapidement tous les concepts fondamentaux : etat, action, reward, politique, valeur d'etat, controle classique, logique floue et apprentissage.
-
