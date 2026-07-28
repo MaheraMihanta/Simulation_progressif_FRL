@@ -143,6 +143,7 @@ class LiveArm2DOFSimulation:
         if not is_reachable(target_array, self.link_lengths):
             raise ValueError("target is outside the reachable workspace.")
         self.env.set_target(target_array)
+        self.observation = self.env.observe()
         self.desired_q = self._desired_q_for_current_target()
         self.pid_controller.reset()
         self.fuzzy_controller.reset()

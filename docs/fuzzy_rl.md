@@ -204,3 +204,81 @@ Cette etape donne une architecture plus defendable :
 
 La prochaine amelioration consistera a remplacer cette coupure heuristique par
 une decision apprise ou par une estimation explicite de confiance du residu.
+
+## Deploiement sequentiel sur plusieurs cibles
+
+L'etape `step_15` transforme l'experience en artefact deployable. La table Q
+floue est entrainee une fois, sauvegardee dans
+`results/policies/step_15_fuzzy_residual_policy_2dof.npz`, rechargee, puis
+utilisee dans la boucle live sur une sequence de cinq cibles. Contrairement aux
+rollouts precedents, le robot n'est pas remis a zero entre deux cibles : chaque
+cible commence depuis l'etat atteint a la cible precedente.
+
+Resultat synthetique :
+
+```text
+flou seul deploye          : succes 5/5, 1366 pas au total
+flou + Q securise deploye  : succes 5/5, 1309 pas au total
+gain total                 : -57 pas
+couple moyen global        : quasi identique au flou seul
+```
+
+La supervision coupe le residu sur quatre cibles de la sequence. Ce resultat
+montre que l'architecture est deployable de maniere prudente : le residu RL
+apporte un gain net sur la mission complete, mais le controleur flou reste le
+garant principal de la convergence hors cible d'entrainement.
+
+Les livrables de deploiement sont :
+
+- `results/policies/step_15_fuzzy_residual_policy_2dof.npz` ;
+- `results/deployments/step_15_multi_target_deployment_2dof.csv` ;
+- `results/deployments/step_15_multi_target_deployment_2dof.md` ;
+- `results/deployments/step_15_multi_target_deployment_2dof.json` ;
+- `results/figures/step_15_multi_target_deployment_2dof.png`.
+
+## Extension vers le bras spatial 3 DDL
+
+L'extension `3 DDL` conserve la meme architecture, mais ajoute une rotation de
+base autour de l'axe vertical. Le bras `2 DDL` initial devient alors un bras
+spatial obtenu par revolution du plan de travail.
+
+La commande reste :
+
+```text
+q_ddot_cmd = q_ddot_flou + q_ddot_RL_residuel
+tau = M_3DDL(q) q_ddot_cmd + C_3DDL(q,q_dot)q_dot + G_3DDL(q) + F q_dot
+```
+
+L'etat flou devient :
+
+```text
+x = (erreur_q0, erreur_q1, erreur_q2, q0_dot, q1_dot, q2_dot)
+```
+
+Chaque variable garde les trois termes linguistiques `negative`, `zero`,
+`positive`. Le nombre de regles passe donc de :
+
+```text
+3^4 = 81 regles pour le 2 DDL
+```
+
+a :
+
+```text
+3^6 = 729 regles pour le 3 DDL
+```
+
+Le residu RL agit maintenant sur trois accelerations articulaires. Les actions
+sont les combinaisons discretes `-1, 0, +1` sur les trois axes, avec l'action
+nulle en premiere position :
+
+```text
+3^3 = 27 actions residuelles
+```
+
+Les experiences `step_16` a `step_22` reproduisent le mode operatoire du
+`2 DDL` : cinematique inverse, PID, flou, dynamique, flou/RL sur cible de
+reference, puis synthese multi-cibles. Cette phase sert surtout a mesurer
+l'effet de la montee en dimension : la structure floue reste lisible, mais le
+nombre de regles et d'actions augmente fortement, ce qui justifie ensuite un
+entrainement multi-cibles ou un passage vers des methodes RL continues.

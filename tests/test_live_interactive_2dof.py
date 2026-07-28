@@ -36,6 +36,10 @@ class LiveInteractive2DOFTests(unittest.TestCase):
 
         self.assertEqual(summary["step"], old_step)
         np.testing.assert_allclose(summary["target"], [0.85, 0.85])
+        self.assertAlmostEqual(
+            summary["distance"],
+            float(np.linalg.norm(np.asarray([0.85, 0.85]) - summary["end_effector"])),
+        )
         self.assertEqual(summary["message"], "target=(0.850, 0.850)")
 
     def test_unreachable_target_is_rejected(self) -> None:

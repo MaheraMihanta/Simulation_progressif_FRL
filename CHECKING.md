@@ -970,3 +970,92 @@ Decision :
   enseignant-chercheur.
 - La version Markdown reste la source principale a enrichir, tandis que le PDF
   sert de version de presentation courte.
+
+## Etape 15 - Deploiement multi-cibles du controleur flou/RL securise
+
+Statut : OK
+
+Objectif :
+
+- Transformer la politique flou/RL en artefact reutilisable.
+- Verifier que la politique sauvegardee peut etre rechargee avant execution.
+- Deployer le controleur sur une sequence de plusieurs cibles sans remettre le
+  robot a zero entre deux cibles.
+- Comparer le deploiement flou/RL securise avec le controleur flou seul.
+
+Principe :
+
+```text
+entrainer la table Q floue
+sauvegarder la politique dans un artefact .npz
+recharger l'artefact
+executer une mission sequentielle D1 -> D2 -> D3 -> D4 -> D5
+```
+
+Controles effectues :
+
+```text
+python -m unittest discover -s tests -p test_fuzzy_residual_policy_io.py
+python -m unittest discover -s tests -p test_multi_target_deployment.py
+python -m unittest discover -s tests -p test_live_interactive_2dof.py
+python experiments/deploy_fuzzy_residual_multi_target_2dof.py
+python -m unittest discover -s tests
+```
+
+Resultat du deploiement :
+
+```text
+policy=E:\THESE\RL\Simuation_FRL\results\policies\step_15_fuzzy_residual_policy_2dof.npz
+target_count=5
+fuzzy_rule_count=81
+episodes=220
+baseline_successes=5/5
+deployed_successes=5/5
+baseline_total_steps=1366
+deployed_total_steps=1309
+step_delta=-57
+residual_switches=[118, 189, 127, 222]
+figure=E:\THESE\RL\Simuation_FRL\results\figures\step_15_multi_target_deployment_2dof.png
+csv=E:\THESE\RL\Simuation_FRL\results\deployments\step_15_multi_target_deployment_2dof.csv
+markdown=E:\THESE\RL\Simuation_FRL\results\deployments\step_15_multi_target_deployment_2dof.md
+manifest=E:\THESE\RL\Simuation_FRL\results\deployments\step_15_multi_target_deployment_2dof.json
+```
+
+Resultat des tests globaux :
+
+```text
+Ran 43 tests in 2.161s
+OK
+```
+
+Fichiers principaux ajoutes ou modifies :
+
+- `src/rl/fuzzy_residual_policy_io.py`
+- `src/rl/__init__.py`
+- `src/interactive/multi_target_deployment.py`
+- `src/interactive/__init__.py`
+- `src/interactive/live_arm_2dof.py`
+- `experiments/deploy_fuzzy_residual_multi_target_2dof.py`
+- `tests/test_fuzzy_residual_policy_io.py`
+- `tests/test_multi_target_deployment.py`
+- `tests/test_live_interactive_2dof.py`
+- `docs/fuzzy_rl.md`
+- `results/policies/step_15_fuzzy_residual_policy_2dof.npz`
+- `results/deployments/step_15_multi_target_deployment_2dof.csv`
+- `results/deployments/step_15_multi_target_deployment_2dof.md`
+- `results/deployments/step_15_multi_target_deployment_2dof.json`
+- `results/figures/step_15_multi_target_deployment_2dof.png`
+
+Correction associee :
+
+- La boucle live rafraichit maintenant l'observation apres `set_target`, afin
+  que la distance et l'erreur correspondent immediatement a la nouvelle cible.
+
+Decision :
+
+- Le controleur flou/RL securise est deployable sur une mission multi-cibles.
+- Le taux de succes reste a `5/5`, comme le flou seul.
+- Le deploiement flou/RL securise reduit le nombre total de pas de `57` sur la
+  mission complete, avec un couple moyen global quasiment identique.
+- La supervision coupe le residu sur quatre cibles, ce qui confirme son role de
+  garde-fou lors des changements de cible.

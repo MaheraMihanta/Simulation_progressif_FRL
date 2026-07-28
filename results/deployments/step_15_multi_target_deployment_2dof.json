@@ -1,0 +1,70 @@
+{
+  "experiment": "step_15_multi_target_deployment_2dof",
+  "methods": {
+    "fuzzy_base": "flou seul",
+    "fuzzy_rl_safe_deployed": "flou + Q securise deploye"
+  },
+  "policy_path": "results\\policies\\step_15_fuzzy_residual_policy_2dof.npz",
+  "summary": {
+    "fuzzy_base": {
+      "mean_final_distance": 0.0066042409095585074,
+      "mean_torque_norm": 15.437980242735696,
+      "residual_switches": [],
+      "successes": 5,
+      "target_count": 5,
+      "total_steps": 1366
+    },
+    "fuzzy_rl_safe_deployed": {
+      "mean_final_distance": 0.007727734476205883,
+      "mean_torque_norm": 15.436218554600922,
+      "residual_switches": [
+        {
+          "step": 118,
+          "target_id": "D2_diag"
+        },
+        {
+          "step": 189,
+          "target_id": "D3_low"
+        },
+        {
+          "step": 127,
+          "target_id": "D4_high"
+        },
+        {
+          "step": 222,
+          "target_id": "D5_far"
+        }
+      ],
+      "successes": 5,
+      "target_count": 5,
+      "total_steps": 1309
+    }
+  },
+  "target_sequence": [
+    {
+      "id": "D1_train",
+      "x": 1.1,
+      "y": 0.55
+    },
+    {
+      "id": "D2_diag",
+      "x": 0.85,
+      "y": 0.85
+    },
+    {
+      "id": "D3_low",
+      "x": 1.25,
+      "y": 0.25
+    },
+    {
+      "id": "D4_high",
+      "x": 0.65,
+      "y": 1.05
+    },
+    {
+      "id": "D5_far",
+      "x": 1.35,
+      "y": 0.45
+    }
+  ]
+}

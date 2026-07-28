@@ -392,6 +392,36 @@ Augmenter progressivement la complexite du robot.
 - Adaptation des controleurs.
 - Resultats comparatifs 2 DDL / 3 DDL / 6 DDL.
 
+### Implementation actuelle 3 DDL
+
+La premiere extension spatiale est maintenant ajoutee. Le robot `3 DDL` est
+compose d'une base en rotation autour de l'axe vertical et du bras `2 DDL`
+superpose sur cette base. Le modele est documente dans `docs/modele_3ddl.md`.
+
+Les modules ajoutes sont :
+
+- `src/robot/kinematics_3dof.py` ;
+- `src/robot/dynamics_3dof.py` ;
+- `src/robot/arm_3dof.py` ;
+- `src/envs/arm_3dof_env.py` ;
+- `src/envs/arm_3dof_dynamic_env.py` ;
+- `src/rl/fuzzy_residual_q_learning_3dof.py`.
+
+Le mode operatoire reprend celui du `2 DDL` avec les experiences :
+
+```text
+python experiments/run_kinematics_3dof.py
+python experiments/run_pid_3dof.py
+python experiments/run_fuzzy_3dof.py
+python experiments/run_pid_dynamic_3dof.py
+python experiments/run_fuzzy_dynamic_3dof.py
+python experiments/run_fuzzy_residual_q_learning_3dof.py
+python experiments/run_fuzzy_residual_generalization_3dof.py
+```
+
+La structure flou/RL passe de `81` regles et `9` actions residuelles pour le
+`2 DDL` a `729` regles et `27` actions residuelles pour le `3 DDL`.
+
 ## 12. Phase 9 - Passage vers CoppeliaSim
 
 ### Objectifs

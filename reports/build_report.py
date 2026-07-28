@@ -168,6 +168,40 @@ def _safe_generalization_summary() -> list[str]:
     return lines
 
 
+def _generalization_3dof_summary() -> list[str]:
+    csv_path = TABLES / "step_22_fuzzy_residual_generalization_3dof.csv"
+    if not csv_path.exists():
+        return ["Le tableau de generalisation 3 DDL step_22 n'est pas encore disponible."]
+    with csv_path.open("r", newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    grouped: dict[str, dict[str, dict[str, str]]] = {}
+    for row in rows:
+        grouped.setdefault(row["target_id"], {})[row["method"]] = row
+
+    lines = [
+        "Resultats de generalisation flou/RL 3 DDL :",
+        "",
+    ]
+    for target_id, methods in grouped.items():
+        base = methods["fuzzy_base"]
+        raw = methods["fuzzy_rl"]
+        safe = methods["fuzzy_rl_safe"]
+        raw_delta_steps = int(raw["steps"]) - int(base["steps"])
+        safe_delta_steps = int(safe["steps"]) - int(base["steps"])
+        safe_delta_torque = float(safe["mean_torque_norm"]) - float(base["mean_torque_norm"])
+        switch = safe["residual_switch_step"] or "-"
+        lines.append(
+            f"{target_id}: succes flou={base['done']}, "
+            f"succes brut={raw['done']}, succes securise={safe['done']}, "
+            f"delta pas brut={raw_delta_steps:+d}, "
+            f"delta pas securise={safe_delta_steps:+d}, "
+            f"delta couple securise={safe_delta_torque:+.4e}, "
+            f"coupure={switch}"
+        )
+    return lines
+
+
 def build_report(output_path: Path = REPORT_PATH) -> Path:
     """Create the preliminary PDF report and return its path."""
 
@@ -233,6 +267,40 @@ def build_report(output_path: Path = REPORT_PATH) -> Path:
             pdf,
             "Synthese des resultats step_12",
             _safe_generalization_summary(),
+        )
+        _add_text_page(
+            pdf,
+            "Extension spatiale 3 DDL",
+            [
+                "Le bras 3 DDL ajoute une rotation de base autour de l'axe vertical au bras 2 DDL initial. La cible devient spatiale et la cinematique inverse se decompose en un azimut de base puis une IK planaire dans le plan radial-z.",
+                "La meme architecture flou/RL est conservee. L'etat flou passe de quatre variables a six variables : erreur_q0, erreur_q1, erreur_q2, q0_dot, q1_dot et q2_dot.",
+                "La base de regles passe ainsi de 81 a 729 regles, et l'espace d'actions residuelles de 9 a 27 actions. Cette etape mesure donc l'effet de la montee en dimension avant le passage vers des bras plus complexes.",
+            ],
+        )
+        _add_image_page(
+            pdf,
+            "Experience step_21 - flou/RL 3 DDL",
+            FIGURES / "step_21_fuzzy_residual_q_learning_3dof.png",
+            [
+                "Le controleur flou reste la politique stabilisante.",
+                "Le Q-learning apprend un residu d'acceleration dans un espace de 729 regles.",
+                "La comparaison avec le flou seul met en evidence l'effet de la dimension supplementaire sur le compromis vitesse/effort.",
+            ],
+        )
+        _add_image_page(
+            pdf,
+            "Experience step_22 - generalisation 3 DDL",
+            FIGURES / "step_22_fuzzy_residual_generalization_3dof.png",
+            [
+                "La table Q est entrainee sur une cible spatiale puis testee sur plusieurs cibles 3D.",
+                "La version securisee conserve le controleur flou comme politique de secours.",
+                "Les resultats servent de transition vers l'apprentissage multi-cibles et les methodes continues.",
+            ],
+        )
+        _add_text_page(
+            pdf,
+            "Synthese des resultats step_22",
+            _generalization_3dof_summary(),
         )
         _add_text_page(
             pdf,
