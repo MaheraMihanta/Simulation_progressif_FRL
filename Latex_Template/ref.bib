@@ -1,0 +1,117 @@
+Please arrange the entries in the .bib file according to the order in which they appear in the PDF version of the references. This is to ensure that subsequent editorial formatting and revisions can be done more efficiently.
+
+At the same time, each reference entry must strictly follow the prescribed format for its corresponding reference type as defined in this template. All required fields (e.g., author, editor, address, etc.) must be fully included. Adding or removing fields is not recommended unless the corresponding information is not available from the original source (e.g., missing on the official website).
+
+Below is a detailed description of each reference type:
+
+Journal Articles (References [1]–[3] in the PDF): Use the "article" type uniformly. This includes articles from arXiv (e.g., Reference [3]), in which both the journal name and volume number should be set as arXiv. Refer to PDF references [1]–[3] for formatting details.
+
+Books and Book Chapters (References [4]–[5]): Use the "incollection" type. For book chapters, use the title field for the chapter title and the booktitle field for the book’s title. If you are citing an individual paper from a conference proceedings volume, you may also use this format by treating the paper as a chapter and the proceedings title as the book.
+
+Conference Papers (Reference [6]): Either "conference" or "incollection" types can be used, as both share the same set of fields. Use the title field for the paper title and the booktitle field for the conference name. While some styles allow the use of "inproceedings", ELSP recommends standardizing on "conference" or "incollection".
+
+Theses (References [7]–[8]): Use "phdthesis" for doctoral dissertations and "mastersthesis" for master's theses, depending on the degree level.
+
+Patents (Reference [9]): Use the "patent" type.
+
+Online Resources (Reference [10]): This includes datasets, PDF files, and other web-based sources. Use the "websitecite" type for all such references.
+
+
+% journal1
+@article{cite_journal1,
+    author = {Saberi, Sara and Kouhizadeh, Mahtab and Sarkis, Joseph and Shen, Lejia},
+    title = {Blockchain technology and its relationships to sustainable supply chain management},
+    journal = {Int. J. Prod. Res.},
+    year = {2019,},
+    volume = {57},
+    number = {7},
+    pages={2117--2135}
+}
+
+
+% journal2
+@article{cite_journal2,
+    author = {Li, Tao and Wang, Zhaojie and Yang, Guoyu and Cui, Yang and Chen, Yuling and Yu, Xiaomei},
+    title = {Semi-selfish mining based on hidden Markov decision process},
+    journal = {Int. J. Intell.},
+    year = {2021,},
+    volume = {36},
+    number = {7},
+    pages={3596--3612}
+}
+
+% journal3
+@article{cite_journal3,
+    author = {Hu, Yining and Seneviratne, Suranga and Thilakarathna, Kanchana and Fukuda, Kensuke and Seneviratne, Aruna},
+    title = {Characterizing and detecting money laundering activities on the bitcoin network},
+    journal = {arXiv},
+    year = {2019,},
+    note={arXiv:1912.12060}
+}
+% book
+@incollection{bookcite,
+  author = {Lee Ellen Copstead and Jacquelyn L. Banasik},
+  editor = {3rd}, 
+  address = {St Louis},
+  booktitle = {Pathophysiology},
+  publisher = {Elsevier},
+  year = {2005},
+  pages = {123--126}
+}
+% book chapters
+@incollection{bookchapterscite,
+  author = {David W. Mount},
+  title = {Alignment of pairs of sequences},
+  editor = {2nd},
+  address = {New York},
+  booktitle = {Bioinformatics: Sequence and Genome Analysis},
+  publisher = {Cold Spring Harbor Laboratory Press,{ }},
+  year = {2004},
+  pages = {65--68}
+}
+
+% conference
+@conference{conferencecite,
+  author = {Awan, Sana and Li, Fengjun and Luo, Bo and Liu, Mei}, 
+  title = {A reliable and accountable privacy-preserving federated learning framework using the blockchain},
+  booktitle = {Proceedings of the 2019 ACM SIGSAC conference on computer and communications security},
+  address = {London, United Kingdom,{ }},
+  year = {November 11-15, 2019,},
+  pages = {2561--2563},
+}
+
+% phdthesis
+@phdthesis{phdthesiscite,
+  author = {Peter Joslin}, 
+  title = {thesisName},
+  school = {University},
+  year = 2004,
+  address = {City},
+}
+
+%masterthesiscite
+@mastersthesis{masterthesiscite,
+  author = {Wüst, Kar}, 
+  title = {Security of blockchain technologies},
+  school = {ETH Zürich},
+  year = 2016
+}
+
+% patent
+@misc{patentcite,
+  author = {Ryan McGeehan and Lev Timourovich Popov and Christopher William Palow and Robert J. Read and Pedram Keyani}, 
+  title = {Preventing phishing attacks based on the reputation of user locations},
+  howpublished = {U.S. Patent No. 9,576,119. 21 Feb. 2017.}
+}
+
+
+% Website
+@misc{websitecite,
+  author = {Joseph Poon and Thaddeus Dryja}, 
+  title = {The bitcoin lightning network: Scalable off-chain instant payments. 2016, pp. 1-59},
+  howpublished = {Available: \url{https://www.bitcoinlightning.com/wp-content/uploads/2018/03/lightning-network-paper.pdf} (accessed on 17 January 2023)}
+}
+
+
+
+
