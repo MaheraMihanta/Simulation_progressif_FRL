@@ -6,6 +6,8 @@ from .arm_3dof_dynamic_env import Arm3DOFDynamicEnv, Arm3DOFDynamicEnvConfig
 from .arm_3dof_env import Arm3DOFEnv, Arm3DOFEnvConfig
 from .arm_4dof_dynamic_env import Arm4DOFDynamicEnv, Arm4DOFDynamicEnvConfig
 from .arm_4dof_env import Arm4DOFEnv, Arm4DOFEnvConfig
+from .arm_5dof_dynamic_env import Arm5DOFDynamicEnv, Arm5DOFDynamicEnvConfig
+from .arm_5dof_env import Arm5DOFEnv, Arm5DOFEnvConfig
 
 __all__ = [
     "Arm2DOFDynamicEnv",
@@ -20,4 +22,8 @@ __all__ = [
     "Arm4DOFDynamicEnvConfig",
     "Arm4DOFEnv",
     "Arm4DOFEnvConfig",
+    "Arm5DOFDynamicEnv",
+    "Arm5DOFDynamicEnvConfig",
+    "Arm5DOFEnv",
+    "Arm5DOFEnvConfig",
 ]

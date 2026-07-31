@@ -1,0 +1,16 @@
+controller,action,done,truncated,steps,final_distance,final_speed,mean_torque_norm
+PID_adapte_RL_residuel_couple,q1_res+,True,False,255,1.662644553347e-04,7.886694905109e-02,4.830775346347e+01
+PID_adapte_seul,base,False,True,550,1.415872896973e-02,1.533338663888e-05,3.482581844858e+01
+
+action,q_value,count
+base,-2.070916522322e+02,1
+q0_res+,-2.073063602424e+02,1
+q1_res+,-1.012659888619e+02,15
+q2_res+,-2.226854906598e+02,1
+q3_res+,-3.026123879507e+02,1
+q4_res+,-5.350181327258e+02,1
+q0_res-,-2.073137167617e+02,1
+q1_res-,-2.189053247250e+02,1
+q2_res-,-2.451525073482e+02,2
+q3_res-,-2.253765899990e+02,1
+q4_res-,-5.889828183266e+02,1

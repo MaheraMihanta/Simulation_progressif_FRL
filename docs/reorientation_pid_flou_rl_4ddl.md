@@ -144,3 +144,7 @@ Pour 6DDL, l'objectif est donc de rester sur :
 - 54 evaluations floues locales pour les gains PID ;
 - 13 actions residuelles bornees ;
 - pas de base floue globale a `3^12 = 531441` regles.
+
+Le passage intermediaire vers 5DDL est maintenant realise et documente dans
+`docs/reorientation_pid_flou_rl_5ddl.md`. Il conserve la meme decomposition :
+PID dynamique, adaptation floue locale des gains et RL residuel borne.
