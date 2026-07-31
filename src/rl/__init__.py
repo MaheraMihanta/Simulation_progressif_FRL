@@ -84,6 +84,11 @@ from .q_learning import (
     greedy_policy_from_q,
     train_q_learning,
 )
+from .residual_actions import (
+    axis_aligned_residual_action_directions,
+    axis_aligned_residual_action_names,
+    axis_aligned_residual_actions,
+)
 
 __all__ = [
     "ACTION_DELTAS",
@@ -129,6 +134,9 @@ __all__ = [
     "ValueIterationResult",
     "aggregate_fuzzy_q_values",
     "aggregate_fuzzy_q_values_3dof",
+    "axis_aligned_residual_action_directions",
+    "axis_aligned_residual_action_names",
+    "axis_aligned_residual_actions",
     "bellman_action_values",
     "discounted_return",
     "epsilon_at_episode",

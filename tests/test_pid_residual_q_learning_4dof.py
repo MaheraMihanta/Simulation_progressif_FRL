@@ -15,6 +15,8 @@ from envs import Arm4DOFEnv, Arm4DOFEnvConfig, Arm4DOFDynamicEnvConfig
 from rl import (
     PIDResidualQLearning4DOFConfig,
     PIDResidualStateEncoder4DOF,
+    axis_aligned_residual_action_names,
+    axis_aligned_residual_actions,
     residual_acceleration_actions_4dof,
     rollout_pid_residual_q_policy_4dof,
     train_pid_residual_q_learning_4dof,
@@ -68,6 +70,18 @@ class PIDResidualQLearning4DOFTests(unittest.TestCase):
         np.testing.assert_allclose(actions[1], [0.3, 0.0, 0.0, 0.0])
         np.testing.assert_allclose(actions[-1], [0.0, 0.0, 0.0, -0.6])
 
+    def test_axis_aligned_residual_actions_generalize_to_6dof(self) -> None:
+        actions = axis_aligned_residual_actions((1.0, 2.0, 3.0, 4.0, 5.0, 6.0))
+        names = axis_aligned_residual_action_names(6)
+
+        self.assertEqual(actions.shape, (13, 6))
+        self.assertEqual(len(names), 13)
+        self.assertEqual(names[0], "base")
+        self.assertEqual(names[6], "q5_res+")
+        self.assertEqual(names[-1], "q5_res-")
+        np.testing.assert_allclose(actions[6], [0.0, 0.0, 0.0, 0.0, 0.0, 6.0])
+        np.testing.assert_allclose(actions[-1], [0.0, 0.0, 0.0, 0.0, 0.0, -6.0])
+
     def test_training_returns_state_q_table_and_episode_traces(self) -> None:
         env_config = Arm4DOFDynamicEnvConfig(max_steps=20)
         encoder = PIDResidualStateEncoder4DOF()
@@ -87,6 +101,33 @@ class PIDResidualQLearning4DOFTests(unittest.TestCase):
         self.assertEqual(result.state_policy.shape, (encoder.n_states,))
         self.assertEqual(result.episode_returns.shape, (2,))
         self.assertEqual(result.episode_lengths.shape, (2,))
+        self.assertTrue(np.all(np.isfinite(result.q_value)))
+
+    def test_learning_config_rejects_invalid_external_torque(self) -> None:
+        with self.assertRaises(ValueError):
+            PIDResidualQLearning4DOFConfig(external_torque=(1.0, 2.0, 3.0))
+
+    def test_learning_config_rejects_invalid_residual_mode(self) -> None:
+        with self.assertRaises(ValueError):
+            PIDResidualQLearning4DOFConfig(residual_mode="force")
+
+    def test_training_accepts_external_torque(self) -> None:
+        env_config = Arm4DOFDynamicEnvConfig(max_steps=20)
+        encoder = PIDResidualStateEncoder4DOF()
+        learning_config = PIDResidualQLearning4DOFConfig(
+            episodes=2,
+            max_steps_per_episode=5,
+            external_torque=(0.0, -1.0, 0.5, -0.25),
+            seed=11,
+        )
+
+        result = train_pid_residual_q_learning_4dof(
+            env_config,
+            encoder=encoder,
+            config=learning_config,
+        )
+
+        self.assertEqual(result.q_value.shape, (encoder.n_states, 9))
         self.assertTrue(np.all(np.isfinite(result.q_value)))
 
     def test_zero_q_table_keeps_adaptive_pid_controller_stable(self) -> None:

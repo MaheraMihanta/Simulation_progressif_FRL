@@ -63,3 +63,84 @@ ameliore la convergence ou l'effort sans destabiliser le controleur classique.
    compenser les erreurs non modelisees.
 4. Generaliser ensuite vers 5DDL/6DDL avec la meme decomposition, sans revenir a
    une base floue globale.
+
+## Avancement de la suite conseillee
+
+### 1. Benchmark multi-cibles 4DDL
+
+Le script `experiments/benchmark_pid_fuzzy_gain_multi_target_4dof.py` compare
+le PID dynamique et le PID a gains flous sur cinq cibles 4DDL.
+
+Sorties :
+
+- `results/tables/step_26_pid_vs_fuzzy_gain_4dof.csv`
+- `results/tables/step_26_pid_vs_fuzzy_gain_4dof.md`
+- `results/figures/step_26_pid_vs_fuzzy_gain_4dof.png`
+
+Resultats synthetiques :
+
+- PID dynamique : 5 succes sur 5, distance finale moyenne `7.0166e-03`.
+- PID a gains flous : 5 succes sur 5, distance finale moyenne `3.9574e-03`.
+
+Le PID a gains flous est parfois plus lent, mais il termine en moyenne plus pres
+de la cible. C'est coherent avec son role : ameliorer l'adaptation locale des
+gains sans remplacer la structure PID.
+
+### 2. Residu RL borne autour du PID adapte
+
+Le residu RL reste borne par construction. Les actions residuelles sont
+axis-alignees :
+
+`base, q0_res+, ..., q(n-1)_res+, q0_res-, ..., q(n-1)_res-`
+
+Le nombre d'actions est donc `1 + 2n`, ce qui reste traitable :
+
+- 4DDL : 9 actions.
+- 5DDL : 11 actions.
+- 6DDL : 13 actions.
+
+Cette logique est maintenant factorisee dans `src/rl/residual_actions.py`.
+
+### 3. Perturbation externe non modelisee
+
+Le script `experiments/run_pid_residual_q_learning_4dof_disturbance.py` applique
+un couple externe constant non modelise :
+
+`(0.0, -4.0, 0.0, 0.0) N.m`
+
+Dans ce cas, un residu exprime en acceleration n'est pas assez adapte : il peut
+atteindre la cible pendant l'exploration, mais la politique gloutonne n'apprend
+pas une compensation stable. Le scenario perturbation utilise donc un residu de
+couple moteur borne, appris par un bandit RL episodique.
+
+Resultats :
+
+- action apprise : `q1_res+` ;
+- PID adapte + RL residuel : succes en 204 pas, distance finale `1.5262e-03` ;
+- PID adapte seul : echec a 500 pas, distance finale `1.0812e-01`.
+
+Sorties :
+
+- `results/tables/step_27_pid_residual_disturbance_4dof.csv`
+- `results/tables/step_27_pid_residual_disturbance_4dof.md`
+- `results/figures/step_27_pid_residual_disturbance_4dof.png`
+
+Cette experience confirme que le residu RL est utile surtout quand il compense
+une erreur non modelisee, ici un biais de couple moteur.
+
+### 4. Generalisation 5DDL/6DDL
+
+La decomposition retenue est directement extensible :
+
+- PID vectoriel : deja compatible avec une taille quelconque.
+- Adaptation floue des gains : 9 regles locales par articulation, donc `9n`.
+- Actions RL residuelles : `1 + 2n` actions axis-alignees.
+- Etat RL conseille : garder une representation compacte, par exemple signes
+  d'erreur articulaire + niveau global de vitesse, ou bien une selection des
+  articulations dominantes au lieu d'un produit cartesien complet.
+
+Pour 6DDL, l'objectif est donc de rester sur :
+
+- 54 evaluations floues locales pour les gains PID ;
+- 13 actions residuelles bornees ;
+- pas de base floue globale a `3^12 = 531441` regles.

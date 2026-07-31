@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Literal, Sequence
 
 import numpy as np
 
@@ -11,26 +11,14 @@ from controllers import FuzzyGainScheduledPIDController
 from envs import Arm4DOFDynamicEnv, Arm4DOFDynamicEnvConfig
 from robot import inverse_dynamics_torque_4dof, inverse_kinematics_4dof
 from robot.kinematics_4dof import ArrayLike4
+from .residual_actions import (
+    axis_aligned_residual_action_directions,
+    axis_aligned_residual_action_names,
+)
 
 
-PID_RESIDUAL_ACTION_DIRECTIONS_4DOF = np.vstack(
-    [
-        np.zeros(4, dtype=float),
-        np.eye(4, dtype=float),
-        -np.eye(4, dtype=float),
-    ]
-)
-PID_RESIDUAL_ACTION_NAMES_4DOF = (
-    "base",
-    "q0_res+",
-    "q1_res+",
-    "q2_res+",
-    "q3_res+",
-    "q0_res-",
-    "q1_res-",
-    "q2_res-",
-    "q3_res-",
-)
+PID_RESIDUAL_ACTION_DIRECTIONS_4DOF = axis_aligned_residual_action_directions(4)
+PID_RESIDUAL_ACTION_NAMES_4DOF = axis_aligned_residual_action_names(4)
 
 
 def _as_positive_vector4(values: float | Sequence[float], name: str) -> np.ndarray:
@@ -130,6 +118,7 @@ class PIDResidualQLearning4DOFConfig:
     epsilon_end: float = 0.05
     epsilon_decay: float = 0.965
     residual_acceleration_scale: float | Sequence[float] = (0.35, 0.45, 0.45, 0.35)
+    residual_mode: Literal["acceleration", "torque"] = "acceleration"
     pid_kp: float | Sequence[float] = (28.0, 42.0, 34.0, 22.0)
     pid_ki: float | Sequence[float] = (0.0, 0.0, 0.0, 0.0)
     pid_kd: float | Sequence[float] = (7.0, 10.0, 8.0, 5.0)
@@ -143,6 +132,7 @@ class PIDResidualQLearning4DOFConfig:
     residual_weight: float = 0.02
     progress_weight: float = 8.0
     goal_reward: float = 12.0
+    external_torque: None | Sequence[float] = None
     start_q: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     start_q_dot: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     seed: int | None = 29
@@ -166,10 +156,16 @@ class PIDResidualQLearning4DOFConfig:
             self.residual_acceleration_scale,
             "residual_acceleration_scale",
         )
+        if self.residual_mode not in ("acceleration", "torque"):
+            raise ValueError("residual_mode must be either 'acceleration' or 'torque'.")
         _as_positive_vector4(self.pid_error_scale, "pid_error_scale")
         _as_positive_vector4(self.pid_derivative_scale, "pid_derivative_scale")
         if self.pid_output_limits[0] >= self.pid_output_limits[1]:
             raise ValueError("pid_output_limits must be ordered as (min, max).")
+        if self.external_torque is not None:
+            torque = np.asarray(self.external_torque, dtype=float)
+            if torque.shape != (4,):
+                raise ValueError("external_torque must contain exactly four values.")
         for name in (
             "distance_weight",
             "speed_weight",
@@ -251,6 +247,38 @@ def _make_controller(
     )
 
 
+def _external_torque(
+    config: PIDResidualQLearning4DOFConfig,
+) -> np.ndarray | None:
+    if config.external_torque is None:
+        return None
+    return np.asarray(config.external_torque, dtype=float)
+
+
+def _torque_with_residual(
+    q: np.ndarray,
+    q_dot: np.ndarray,
+    base_acceleration: np.ndarray,
+    residual_command: np.ndarray,
+    env_config: Arm4DOFDynamicEnvConfig,
+    config: PIDResidualQLearning4DOFConfig,
+) -> np.ndarray:
+    if config.residual_mode == "acceleration":
+        return inverse_dynamics_torque_4dof(
+            q,
+            q_dot,
+            base_acceleration + residual_command,
+            env_config.dynamics_config,
+        )
+    base_torque = inverse_dynamics_torque_4dof(
+        q,
+        q_dot,
+        base_acceleration,
+        env_config.dynamics_config,
+    )
+    return base_torque + residual_command
+
+
 def _reward(
     previous_distance: float,
     distance: float,
@@ -317,14 +345,19 @@ def train_pid_residual_q_learning_4dof(
                 observation["q"],
                 env_config.dt,
             )
-            residual_acceleration = actions[action]
-            torque = inverse_dynamics_torque_4dof(
+            residual_command = actions[action]
+            torque = _torque_with_residual(
                 observation["q"],
                 observation["q_dot"],
-                base_acceleration + residual_acceleration,
-                env_config.dynamics_config,
+                base_acceleration,
+                residual_command,
+                env_config,
+                cfg,
             )
-            next_observation, _, done, info = env.step(torque)
+            next_observation, _, done, info = env.step(
+                torque,
+                external_torque=_external_torque(cfg),
+            )
             distance = float(next_observation["distance"])
             speed = float(next_observation["speed"])
             effort = float(info["effort"])
@@ -333,7 +366,7 @@ def train_pid_residual_q_learning_4dof(
                 distance,
                 speed,
                 effort,
-                float(np.linalg.norm(residual_acceleration)),
+                float(np.linalg.norm(residual_command)),
                 done,
                 cfg,
             )
@@ -410,14 +443,19 @@ def rollout_pid_residual_q_policy_4dof(
     for _ in range(cfg.max_steps_per_episode):
         action = 0 if residual_disabled else int(np.argmax(q_table[state]))
         base_acceleration = controller.compute(goal_q, observation["q"], env_config.dt)
-        residual_acceleration = actions[action]
-        torque = inverse_dynamics_torque_4dof(
+        residual_command = actions[action]
+        torque = _torque_with_residual(
             observation["q"],
             observation["q_dot"],
-            base_acceleration + residual_acceleration,
-            env_config.dynamics_config,
+            base_acceleration,
+            residual_command,
+            env_config,
+            cfg,
         )
-        observation, _, done, info = env.step(torque)
+        observation, _, done, info = env.step(
+            torque,
+            external_torque=_external_torque(cfg),
+        )
         distance = float(observation["distance"])
         speed = float(observation["speed"])
         effort = float(info["effort"])
@@ -426,7 +464,7 @@ def rollout_pid_residual_q_policy_4dof(
             distance,
             speed,
             effort,
-            float(np.linalg.norm(residual_acceleration)),
+            float(np.linalg.norm(residual_command)),
             done,
             cfg,
         )
