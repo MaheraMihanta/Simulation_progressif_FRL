@@ -2,6 +2,7 @@
 
 from .arm_2dof import Arm2DOF
 from .arm_3dof import Arm3DOF
+from .arm_4dof import Arm4DOF
 from .dynamics import (
     Arm2DOFDynamicsConfig,
     coriolis_centrifugal_torque,
@@ -20,6 +21,16 @@ from .dynamics_3dof import (
     mass_matrix_3dof,
     viscous_friction_torque_3dof,
     yaw_inertia_and_gradient,
+)
+from .dynamics_4dof import (
+    Arm4DOFDynamicsConfig,
+    coriolis_centrifugal_torque_4dof,
+    gravity_torque_4dof,
+    inverse_dynamics_torque_4dof,
+    joint_acceleration_4dof,
+    mass_matrix_4dof,
+    viscous_friction_torque_4dof,
+    yaw_inertia_and_gradient_4dof,
 )
 from .kinematics import (
     Arm2DOFConfig,
@@ -41,6 +52,16 @@ from .kinematics_3dof import (
     joint_positions_3dof,
     workspace_radius_3dof,
 )
+from .kinematics_4dof import (
+    Arm4DOFConfig,
+    clip_to_joint_limits_4dof,
+    forward_kinematics_4dof,
+    inverse_kinematics_4dof,
+    is_reachable_4dof,
+    jacobian_4dof,
+    joint_positions_4dof,
+    workspace_radius_4dof,
+)
 
 __all__ = [
     "Arm2DOF",
@@ -49,31 +70,48 @@ __all__ = [
     "Arm3DOF",
     "Arm3DOFConfig",
     "Arm3DOFDynamicsConfig",
+    "Arm4DOF",
+    "Arm4DOFConfig",
+    "Arm4DOFDynamicsConfig",
     "clip_to_joint_limits",
     "clip_to_joint_limits_3dof",
+    "clip_to_joint_limits_4dof",
     "coriolis_centrifugal_torque",
     "coriolis_centrifugal_torque_3dof",
+    "coriolis_centrifugal_torque_4dof",
     "forward_kinematics",
     "forward_kinematics_3dof",
+    "forward_kinematics_4dof",
     "gravity_torque",
     "gravity_torque_3dof",
+    "gravity_torque_4dof",
     "inverse_dynamics_torque",
     "inverse_dynamics_torque_3dof",
+    "inverse_dynamics_torque_4dof",
     "inverse_kinematics",
     "inverse_kinematics_3dof",
+    "inverse_kinematics_4dof",
     "is_reachable",
     "is_reachable_3dof",
+    "is_reachable_4dof",
     "jacobian",
     "jacobian_3dof",
+    "jacobian_4dof",
     "joint_acceleration",
     "joint_acceleration_3dof",
+    "joint_acceleration_4dof",
     "joint_positions",
     "joint_positions_3dof",
+    "joint_positions_4dof",
     "mass_matrix",
     "mass_matrix_3dof",
+    "mass_matrix_4dof",
     "viscous_friction_torque",
     "viscous_friction_torque_3dof",
+    "viscous_friction_torque_4dof",
     "workspace_radius",
     "workspace_radius_3dof",
+    "workspace_radius_4dof",
     "yaw_inertia_and_gradient",
+    "yaw_inertia_and_gradient_4dof",
 ]
