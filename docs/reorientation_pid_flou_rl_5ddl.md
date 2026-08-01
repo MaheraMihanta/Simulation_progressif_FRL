@@ -306,3 +306,6 @@ l'action residuelle unique axis-alignee ne permettait pas.
 2. Entrainer et comparer la variante Q-learning factorisee sur des perturbations
    non constantes ou changeantes, afin de depasser le benchmark local a residu
    fixe.
+
+La premiere partie de cette suite est maintenant documentee dans
+`docs/reorientation_pid_flou_rl_6ddl.md`.

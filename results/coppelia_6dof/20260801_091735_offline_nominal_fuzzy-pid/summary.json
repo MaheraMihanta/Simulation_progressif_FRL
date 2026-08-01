@@ -1,0 +1,32 @@
+{
+  "created_at": "2026-08-01T09:17:35",
+  "scenario": "nominal",
+  "scenario_config": {
+    "name": "nominal",
+    "measurement_noise_std": 0.0,
+    "velocity_noise_std": 0.0,
+    "observation_delay_steps": 0,
+    "reference_step_time": null,
+    "reference_step_ramp": 0.8,
+    "seed": 7
+  },
+  "backend": "offline",
+  "controller": "fuzzy-pid",
+  "trajectory": "multi_sine",
+  "dt": 0.05,
+  "duration": 1.0,
+  "robot": "NiryoOne",
+  "metrics": {
+    "joint_rmse": 0.012093710059232847,
+    "joint_max_abs_error": 0.026208279822066985,
+    "final_error_norm": 0.03446912005201825,
+    "control_energy": 8.6723530927286e-05,
+    "action_smoothness": 2.6702452179706567e-05,
+    "constraint_violations": 0,
+    "settling_time": 1.0,
+    "mean_error_norm": 0.023677686756084722,
+    "error_norm_std": 0.017802080998059425,
+    "correction_sign_flip_ratio": 0.008771929824561403,
+    "high_frequency_error_index": 0.00037638439504518966
+  }
+}
