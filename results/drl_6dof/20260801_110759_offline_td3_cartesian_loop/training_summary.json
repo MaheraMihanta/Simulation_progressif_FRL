@@ -1,0 +1,27 @@
+{
+  "backend": "offline",
+  "algorithm": "td3",
+  "trajectory": "cartesian_loop",
+  "timesteps": 300,
+  "learning_starts": 50,
+  "batch_size": 32,
+  "action_mode": "residual",
+  "residual_scale": 0.05,
+  "duration": 2.0,
+  "dt": 0.05,
+  "seed": 23,
+  "tensorboard": false,
+  "start_from_current_state": false,
+  "model_path": "results\\drl_6dof\\20260801_110759_offline_td3_cartesian_loop\\td3_fuzzy_guided_6dof.zip",
+  "evaluation": {
+    "episodes": 2,
+    "steps": 80,
+    "mean_return": -7.282326343802437,
+    "mean_final_error_norm": 0.010280375213287495,
+    "mean_error_norm": 0.18266374480230776,
+    "max_error_norm": 0.48795780743961986,
+    "mean_final_cartesian_error_norm": 0.01056859025563121,
+    "mean_cartesian_error_norm": 0.15607486280108207,
+    "constraint_violations": 0
+  }
+}

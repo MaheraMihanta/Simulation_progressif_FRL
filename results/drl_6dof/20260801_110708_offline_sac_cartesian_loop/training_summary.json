@@ -1,0 +1,27 @@
+{
+  "backend": "offline",
+  "algorithm": "sac",
+  "trajectory": "cartesian_loop",
+  "timesteps": 300,
+  "learning_starts": 50,
+  "batch_size": 32,
+  "action_mode": "residual",
+  "residual_scale": 0.05,
+  "duration": 2.0,
+  "dt": 0.05,
+  "seed": 19,
+  "tensorboard": false,
+  "start_from_current_state": false,
+  "model_path": "results\\drl_6dof\\20260801_110708_offline_sac_cartesian_loop\\sac_fuzzy_guided_6dof.zip",
+  "evaluation": {
+    "episodes": 2,
+    "steps": 80,
+    "mean_return": -7.307193617808634,
+    "mean_final_error_norm": 0.005565714131271774,
+    "mean_error_norm": 0.18257014281779632,
+    "max_error_norm": 0.49016902422899894,
+    "mean_final_cartesian_error_norm": 0.006938709351476818,
+    "mean_cartesian_error_norm": 0.1557495034315949,
+    "constraint_violations": 0
+  }
+}

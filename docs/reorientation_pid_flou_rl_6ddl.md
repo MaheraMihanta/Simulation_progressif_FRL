@@ -47,6 +47,7 @@ un pitch distal et deux replis :
   - `src/envs/arm_6dof_dynamic_env.py`
 - RL residuel 6DDL :
   - `src/rl/pid_residual_q_learning_6dof.py`
+  - schedules de perturbations constantes, par episode, ou par segments temporels
 - Visualisation :
   - `plot_arm_6dof`
   - `plot_control_simulation_6dof`
@@ -54,11 +55,23 @@ un pitch distal et deux replis :
   - `experiments/run_pid_dynamic_6dof.py`
   - `experiments/run_pid_fuzzy_gain_dynamic_6dof.py`
   - `experiments/benchmark_pid_factorized_residual_multi_disturbance_6dof.py`
+  - `experiments/run_pid_factorized_residual_q_learning_6dof_changing_disturbance.py`
   - `experiments/run_coppelia_tracking_6dof.py`
+  - `experiments/train_sac_td3_fuzzy_guided_6dof.py`
+  - `experiments/compare_cartesian_tracking_6dof.py`
+- Trajectoires :
+  - `multi_sine`
+  - `point_to_point`
+  - `cartesian_loop`
+  - `cartesian_point_to_point`
+- Passerelle DRL continue :
+  - `fuzzy_drl_sim/gym_env.py`
+  - wrapper Gymnasium de `FuzzyGuidedTrackingTask`
 - Tests :
   - `tests/test_kinematics_6dof.py`
   - `tests/test_dynamics_6dof.py`
   - `tests/test_pid_residual_q_learning_6dof.py`
+  - `tests/test_cartesian_trajectory_6dof.py`
 
 ## Resultats obtenus
 
@@ -132,6 +145,44 @@ complexite lineaire. Le benchmark utilise un prior de compensation construit a
 partir du couple perturbateur connu ; la suite naturelle est de remplacer ce
 prior par une politique apprise a partir des recompenses.
 
+### Q-learning factorise appris sous perturbations changeantes
+
+Script :
+
+`python experiments/run_pid_factorized_residual_q_learning_6dof_changing_disturbance.py`
+
+Scenario :
+
+- apprentissage sans prior de compensation explicite ;
+- perturbation choisie par episode pendant l'apprentissage ;
+- evaluation sur les trois profils statiques et sur un profil temporel
+  changeant par segments de `120` pas.
+
+Sorties :
+
+- `results/tables/step_39_factorized_q_learning_changing_disturbance_6dof.csv`
+- `results/tables/step_39_factorized_q_learning_changing_disturbance_6dof.md`
+- `results/figures/step_39_factorized_q_learning_changing_disturbance_6dof.png`
+- `results/figures/step_39_factorized_q_learning_changing_disturbance_6dof_learning.png`
+
+Resultats synthetiques :
+
+- etats : `2187` ;
+- episodes : `50` ;
+- taux de succes des 15 derniers episodes : `0.000` ;
+- succes statiques PID adapte : `0/3` ;
+- succes statiques PID adapte + Q factorise : `0/3` ;
+- profil temporel changeant : distance finale PID adapte `5.1844e-01`,
+  distance finale PID adapte + Q factorise `5.1997e-01`.
+
+Interpretation : cette tentative retire bien le prior fourni au benchmark, mais
+le Q-learning tabulaire compact ne suffit pas encore. La politique apprise
+ameliore parfois la distance finale sur les profils multi-axes statiques, mais
+avec des vitesses finales trop elevees, donc sans stabilisation acceptable. Sur
+la perturbation temporelle changeante, elle ne depasse pas le PID adapte. Cette
+etape valide surtout la difficulte du probleme sans prior et motive une
+politique continue plus expressive.
+
 ### Validation CoppeliaSim 6DDL
 
 Script :
@@ -157,11 +208,126 @@ Sortie :
 
 - `results/coppelia_6dof/20260801_091755_coppelia_nominal_fuzzy-pid/`
 
+### Passerelle SAC/TD3
+
+Fichiers :
+
+- `fuzzy_drl_sim/gym_env.py`
+- `fuzzy_drl_sim/rl_task.py`
+- `experiments/train_sac_td3_fuzzy_guided_6dof.py`
+
+Le wrapper Gymnasium expose `FuzzyGuidedTrackingTask` avec :
+
+- observation continue de la tache floue ;
+- action continue normalisee par articulation dans `[-1, 1]` ;
+- mode `residual` par defaut : la politique apprend un residu borne autour du
+  PID flou expert, au lieu de remplacer directement la consigne ;
+- mode `direct` conserve pour diagnostic ;
+- reset fixe a `q=0` par defaut pour rendre les episodes comparables ;
+- backend hors-ligne par defaut ;
+- backend CoppeliaSim via `--coppelia`.
+
+Commande prevue :
+
+`python experiments/train_sac_td3_fuzzy_guided_6dof.py --algo sac --trajectory cartesian_loop --action-mode residual --residual-scale 0.05 --timesteps 300 --learning-starts 50 --batch-size 32 --eval-episodes 2 --duration 2 --dt 0.05`
+
+Etat actuel : les dependances optionnelles sont installees et le pipeline
+d'entrainement fonctionne (`stable-baselines3=True`, `gymnasium=True`,
+`torch=True`).
+
+Resultat SAC hors-ligne court :
+
+- sortie : `results/drl_6dof/20260801_110708_offline_sac_cartesian_loop/`
+- timesteps : `300` ;
+- duree episode : `2 s` ;
+- mode : `residual`, `residual_scale=0.05` ;
+- evaluation : `2` episodes ;
+- reward moyen : `-7.3072` ;
+- erreur articulaire finale moyenne : `5.5657e-03` ;
+- erreur cartesienne finale moyenne : `6.9387e-03` ;
+- violations de contraintes : `0`.
+
+Resultat TD3 hors-ligne court :
+
+- sortie : `results/drl_6dof/20260801_110759_offline_td3_cartesian_loop/`
+- timesteps : `300` ;
+- reward moyen : `-7.2823` ;
+- erreur articulaire finale moyenne : `1.0280e-02` ;
+- erreur cartesienne finale moyenne : `1.0569e-02` ;
+- violations de contraintes : `0`.
+
+Smoke-test SAC CoppeliaSim :
+
+- commande : `python experiments/train_sac_td3_fuzzy_guided_6dof.py --algo sac --trajectory cartesian_loop --action-mode residual --residual-scale 0.05 --timesteps 20 --learning-starts 5 --batch-size 8 --eval-episodes 1 --duration 0.5 --dt 0.05 --seed 29 --coppelia`
+- sortie : `results/drl_6dof/20260801_110759_coppelia_sac_cartesian_loop/`
+- erreur cartesienne finale moyenne : `3.6884e-01` ;
+- baseline CoppeliaSim fuzzy-PID meme duree : `3.7409e-01` ;
+- violations de contraintes : `0`.
+
+Synthese :
+
+- `results/tables/step_40_continuous_drl_residual_6dof.csv`
+- `results/tables/step_40_continuous_drl_residual_6dof.md`
+
+Interpretation : l'entrainement SAC/TD3 continu est maintenant operationnel.
+Sur un budget de `300` pas, la politique n'est pas encore optimale, mais le
+mode residuel preserve le comportement PID flou et produit des evaluations
+stables hors-ligne. Le smoke-test CoppeliaSim valide l'integration technique ;
+un vrai apprentissage CoppeliaSim demandera des episodes plus longs et beaucoup
+plus de pas d'entrainement.
+
+### Trajectoires cartesiennes 6DDL
+
+Les trajectoires de tache ont ete ajoutees dans `fuzzy_drl_sim/trajectory.py` :
+
+- `cartesian_loop` : boucle 3D douce relative a la position initiale de
+  l'effecteur ;
+- `cartesian_point_to_point` : transfert quintique 3D relatif a la position
+  initiale de l'effecteur.
+
+Chaque reference cartesienne est transformee en consigne articulaire par IK
+6DDL, puis le suivi est evalue a deux niveaux :
+
+- erreur articulaire `q_ref - q`, compatible avec les simulations CoppeliaSim ;
+- erreur position 3D `p_ref - p`, calculee par FK Python a partir des positions
+  articulaires mesurees, ou depuis `tip_path` CoppeliaSim si ce chemin est
+  renseigne dans `RobotConfig`.
+
+Script :
+
+`python experiments/compare_cartesian_tracking_6dof.py --mode coppelia --controller fuzzy-pid --trajectory cartesian_loop --duration 4 --dt 0.05 --no-plots`
+
+Resultat dry-run Python :
+
+- sortie : `results/cartesian_6dof/20260801_101601_offline_nominal_fuzzy-pid/`
+- RMSE articulaire : `7.4961e-02` ;
+- erreur articulaire finale : `1.0846e-02` ;
+- RMSE cartesienne : `9.7994e-02` ;
+- erreur cartesienne finale : `6.3495e-03`.
+
+Resultat CoppeliaSim :
+
+- sortie : `results/cartesian_6dof/20260801_101611_coppelia_nominal_fuzzy-pid/`
+- RMSE articulaire : `1.8094e-01` ;
+- erreur articulaire finale : `1.0388e-02` ;
+- RMSE cartesienne : `9.5613e-02` ;
+- erreur cartesienne finale : `5.9011e-03`.
+
+Interpretation : la trajectoire cartesienne relative donne maintenant une base
+commune pour comparer le suivi articulaire CoppeliaSim et le suivi position 3D
+du modele Python. Les erreurs finales sont faibles sur les deux backends ; les
+RMSE restent plus eleves parce que la trajectoire commence par une reorientation
+depuis la posture initiale.
+
 ## Suite conseillee
 
-1. Entrainer la variante Q-learning factorisee 6DDL sur perturbations changeantes,
-   pour apprendre le prior de compensation au lieu de le fournir.
-2. Etendre `FuzzyGuidedTrackingTask` vers un vrai entrainement continu SAC/TD3
-   dans CoppeliaSim, en gardant l'action normalisee par articulation.
-3. Ajouter des trajectoires de tache cartesiens pour comparer suivi articulaire
-   CoppeliaSim et suivi position 3D du modele Python.
+1. L'etape Q-learning factorisee 6DDL sur perturbations changeantes est faite
+   comme diagnostic : sans prior, la variante tabulaire compacte ne resout pas
+   encore la stabilisation.
+2. Augmenter progressivement le budget SAC/TD3 hors-ligne sur `cartesian_loop`
+   et `cartesian_point_to_point`, puis conserver les meilleurs checkpoints.
+3. Lancer une campagne CoppeliaSim plus longue avec le mode residuel, en
+   comparant systematiquement fuzzy-PID seul, SAC residuel et TD3 residuel.
+4. Utiliser les trajectoires cartesiennes comme objectif SAC/TD3 et renseigner
+   `RobotConfig.tip_path` si l'on veut comparer la position reelle du tip
+   CoppeliaSim au lieu de la FK Python.

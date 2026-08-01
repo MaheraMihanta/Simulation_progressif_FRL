@@ -6,9 +6,12 @@ from typing import Protocol
 import numpy as np
 
 from .config import RobotConfig, SimulationConfig
+from .controllers import FuzzyGuidedPIDController
 from .fuzzy import FuzzyOutput, FuzzySupervisor
 from .state import ArmState
 from .trajectory import JointTrajectory, make_trajectory
+
+from robot import forward_kinematics_6dof
 
 
 class ArmBackend(Protocol):
@@ -40,10 +43,11 @@ class RLStepResult:
 class FuzzyGuidedTrackingTask:
     """Gym-like tracking task ready to wrap with SAC/TD3 later.
 
-    Action convention: a policy outputs one normalized correction per joint in
-    [-1, 1]. The task scales it by `RobotConfig.max_position_correction`, adds it
-    around q_ref, sends that joint-position target to the backend, then computes
-    the fuzzy-shaped reward.
+    Action convention: a policy outputs one normalized value per joint in
+    [-1, 1]. In residual mode, this value is a bounded correction around a
+    fuzzy-PID expert target. In direct mode, it is the full correction around
+    q_ref. The residual mode matches the PID-flou + RL pattern used by the
+    tabular controllers.
     """
 
     def __init__(
@@ -53,13 +57,39 @@ class FuzzyGuidedTrackingTask:
         simulation_config: SimulationConfig,
         trajectory_name: str = "multi_sine",
         supervisor: FuzzySupervisor | None = None,
+        action_mode: str = "residual",
+        residual_scale: float = 0.35,
+        initial_q: np.ndarray | None = None,
     ) -> None:
+        if action_mode not in {"direct", "residual"}:
+            raise ValueError("action_mode must be 'direct' or 'residual'")
+        if residual_scale < 0.0:
+            raise ValueError("residual_scale must be non-negative")
         self.backend = backend
         self.robot_config = robot_config
         self.simulation_config = simulation_config
         self.trajectory_name = trajectory_name
         self.supervisor = supervisor or FuzzySupervisor()
+        self.action_mode = action_mode
+        self.residual_scale = residual_scale
+        self.initial_q = None if initial_q is None else np.asarray(initial_q, dtype=float)
+        if self.initial_q is not None and self.initial_q.shape != (robot_config.dof,):
+            raise ValueError(
+                f"initial_q must have shape ({robot_config.dof},), got {self.initial_q.shape}"
+            )
+        self.expert_controller = (
+            FuzzyGuidedPIDController(
+                dof=robot_config.dof,
+                correction_limit=robot_config.max_position_correction,
+                joint_lower=robot_config.joint_lower_limits,
+                joint_upper=robot_config.joint_upper_limits,
+                supervisor=self.supervisor,
+            )
+            if action_mode == "residual"
+            else None
+        )
         self.trajectory: JointTrajectory | None = None
+        self.current_state: ArmState | None = None
         self.t = 0.0
         self.previous_action = np.zeros(robot_config.dof, dtype=float)
 
@@ -73,16 +103,21 @@ class FuzzyGuidedTrackingTask:
 
     def reset(self) -> np.ndarray:
         self.backend.start()
-        state = self.backend.reset()
+        state = self.backend.reset(self.initial_q)
         self.trajectory = make_trajectory(self.trajectory_name, state.q, self.simulation_config.duration)
+        self.current_state = state
         self.t = 0.0
         self.previous_action[:] = 0.0
+        if self.expert_controller is not None:
+            self.expert_controller.reset()
         reference = self.trajectory.sample(self.t)
         fuzzy = self.supervisor.evaluate(reference.q - state.q, reference.q_dot - state.q_dot, self.previous_action)
         return self._make_observation(state, reference.q, reference.q_dot, fuzzy)
 
     def step(self, normalized_action: np.ndarray) -> RLStepResult:
         if self.trajectory is None:
+            raise RuntimeError("FuzzyGuidedTrackingTask.reset() must be called before step()")
+        if self.current_state is None:
             raise RuntimeError("FuzzyGuidedTrackingTask.reset() must be called before step()")
 
         action = np.clip(np.asarray(normalized_action, dtype=float), -1.0, 1.0)
@@ -91,8 +126,22 @@ class FuzzyGuidedTrackingTask:
 
         reference = self.trajectory.sample(self.t)
         correction_limit = np.asarray(self.robot_config.max_position_correction, dtype=float)
-        correction = action * correction_limit
-        raw_target = reference.q + correction
+        if self.expert_controller is None:
+            residual = action * correction_limit
+            expert_correction = np.zeros(self.robot_config.dof, dtype=float)
+            expert_target = reference.q
+        else:
+            expert_output = self.expert_controller.compute(
+                self.current_state.q,
+                self.current_state.q_dot,
+                reference.q,
+                reference.q_dot,
+                self.simulation_config.dt,
+            )
+            residual = action * correction_limit * self.residual_scale
+            expert_correction = expert_output.correction
+            expert_target = expert_output.target_position
+        raw_target = expert_target + residual
         target = self._clip_target(raw_target)
         next_state = self.backend.step(target)
 
@@ -100,13 +149,17 @@ class FuzzyGuidedTrackingTask:
         next_reference = self.trajectory.sample(next_t)
         error = next_reference.q - next_state.q
         error_rate = next_reference.q_dot - next_state.q_dot
-        fuzzy = self.supervisor.evaluate(error, error_rate, correction)
-        reward = self._reward(error, error_rate, correction, raw_target, fuzzy)
+        cartesian_error_norm = self._cartesian_error_norm(next_state, next_reference)
+        correction = target - reference.q
+        policy_effort = residual if self.expert_controller is not None else correction
+        fuzzy = self.supervisor.evaluate(error, error_rate, policy_effort)
+        reward = self._reward(error, error_rate, policy_effort, raw_target, fuzzy)
         violation_count = self._constraint_violations(next_state.q)
 
         self.t = next_t
         truncated = self.t >= self.simulation_config.duration
-        self.previous_action = correction.copy()
+        self.current_state = next_state
+        self.previous_action = policy_effort.copy()
         observation = self._make_observation(next_state, next_reference.q, next_reference.q_dot, fuzzy)
         return RLStepResult(
             observation=observation,
@@ -116,7 +169,10 @@ class FuzzyGuidedTrackingTask:
             info={
                 "time": self.t,
                 "error_norm": float(np.linalg.norm(error)),
+                "cartesian_error_norm": cartesian_error_norm,
                 "action_norm": float(np.linalg.norm(correction)),
+                "residual_norm": float(np.linalg.norm(residual)),
+                "expert_correction_norm": float(np.linalg.norm(expert_correction)),
                 "fuzzy_severity": fuzzy.severity,
                 "fuzzy_exploration_scale": fuzzy.exploration_scale,
                 "constraint_violations": violation_count,
@@ -171,3 +227,18 @@ class FuzzyGuidedTrackingTask:
         lower = np.asarray(self.robot_config.joint_lower_limits, dtype=float)
         upper = np.asarray(self.robot_config.joint_upper_limits, dtype=float)
         return int(np.count_nonzero((q < lower) | (q > upper)))
+
+    def _cartesian_error_norm(
+        self,
+        state: ArmState,
+        reference,
+    ) -> float:
+        if reference.position is None:
+            return 0.0
+        if state.tip_position is not None:
+            position = state.tip_position
+        elif self.robot_config.dof == 6:
+            position = forward_kinematics_6dof(state.q)
+        else:
+            return 0.0
+        return float(np.linalg.norm(reference.position - position))

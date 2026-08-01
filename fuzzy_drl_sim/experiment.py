@@ -15,7 +15,9 @@ from .metrics import TrackingMetrics, compute_tracking_metrics
 from .offline_env import OfflineArmEnv
 from .scenarios import ScenarioConfig, smooth_step
 from .state import ArmState
-from .trajectory import make_trajectory
+from .trajectory import TrajectorySample, make_trajectory
+
+from robot import forward_kinematics_6dof
 
 
 @dataclass(frozen=True)
@@ -25,6 +27,7 @@ class ExperimentResult:
     summary_path: Path
     plot_paths: list[Path]
     metrics: TrackingMetrics
+    cartesian_metrics: dict[str, float] | None = None
 
 
 def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
@@ -59,6 +62,7 @@ def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
             delayed_state = state_history[0]
             observed_state = _apply_observation_effects(delayed_state, scenario, rng, robot.dof)
             reference = _apply_reference_effects(trajectory.sample(t), scenario, robot.dof, t)
+            tip_position = _tip_position(state, robot)
             output = controller.compute(
                 observed_state.q,
                 observed_state.q_dot,
@@ -77,6 +81,8 @@ def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
                     reference.q,
                     reference.q_dot,
                     output,
+                    cartesian_ref=reference.position,
+                    cartesian_actual=tip_position,
                 )
             )
     finally:
@@ -91,6 +97,7 @@ def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
         np.asarray(robot.joint_lower_limits, dtype=float),
         np.asarray(robot.joint_upper_limits, dtype=float),
     )
+    cartesian_metrics = _compute_cartesian_metrics(arrays)
 
     csv_path = run_dir / "tracking_log.csv"
     summary_path = run_dir / "summary.json"
@@ -115,6 +122,8 @@ def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
         "robot": robot.name,
         "metrics": metrics.to_dict(),
     }
+    if cartesian_metrics is not None:
+        summary["cartesian_metrics"] = cartesian_metrics
     save_json(summary_path, summary)
 
     if sim_cfg.make_plots:
@@ -127,6 +136,7 @@ def run_tracking_experiment(config: ExperimentConfig) -> ExperimentResult:
         summary_path=summary_path,
         plot_paths=plot_paths,
         metrics=metrics,
+        cartesian_metrics=cartesian_metrics,
     )
 
 
@@ -172,7 +182,7 @@ def _apply_reference_effects(reference: Any, scenario: ScenarioConfig, dof: int,
     if blend == 0.0 and blend_dot == 0.0 and blend_ddot == 0.0:
         return reference
     offset = scenario.reference_offset(dof)
-    return type(reference)(
+    return TrajectorySample(
         q=reference.q + blend * offset,
         q_dot=reference.q_dot + blend_dot * offset,
         q_ddot=reference.q_ddot + blend_ddot * offset,
@@ -188,6 +198,8 @@ def _make_row(
     q_ref: np.ndarray,
     q_ref_dot: np.ndarray,
     output: ControllerOutput,
+    cartesian_ref: np.ndarray | None = None,
+    cartesian_actual: np.ndarray | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {"time": t}
     for idx, value in enumerate(q, start=1):
@@ -212,6 +224,14 @@ def _make_row(
     for key, value in output.info.items():
         if isinstance(value, (int, float, str)):
             row[key] = value
+    if cartesian_ref is not None and cartesian_actual is not None:
+        cartesian_error = cartesian_ref - cartesian_actual
+        labels = ("x", "y", "z")
+        for idx, label in enumerate(labels):
+            row[label] = float(cartesian_actual[idx])
+            row[f"{label}_ref"] = float(cartesian_ref[idx])
+            row[f"{label}_error"] = float(cartesian_error[idx])
+        row["cartesian_error_norm"] = float(np.linalg.norm(cartesian_error))
     return row
 
 
@@ -223,4 +243,33 @@ def _rows_to_arrays(rows: list[dict[str, Any]], dof: int) -> dict[str, np.ndarra
         [[row[f"correction{idx}"] for idx in range(1, dof + 1)] for row in rows],
         dtype=float,
     )
-    return {"time": time, "q": q, "q_ref": q_ref, "correction": correction}
+    arrays = {"time": time, "q": q, "q_ref": q_ref, "correction": correction}
+    cartesian_keys = ("x", "x_ref", "y", "y_ref", "z", "z_ref")
+    if all(all(key in row for key in cartesian_keys) for row in rows):
+        arrays["position"] = np.array([[row[label] for label in ("x", "y", "z")] for row in rows], dtype=float)
+        arrays["position_ref"] = np.array(
+            [[row[f"{label}_ref"] for label in ("x", "y", "z")] for row in rows],
+            dtype=float,
+        )
+    return arrays
+
+
+def _tip_position(state: ArmState, robot: RobotConfig) -> np.ndarray | None:
+    if state.tip_position is not None:
+        return state.tip_position
+    if robot.dof == 6:
+        return forward_kinematics_6dof(state.q)
+    return None
+
+
+def _compute_cartesian_metrics(arrays: dict[str, np.ndarray]) -> dict[str, float] | None:
+    if "position" not in arrays or "position_ref" not in arrays:
+        return None
+    error = arrays["position_ref"] - arrays["position"]
+    error_norm = np.linalg.norm(error, axis=1)
+    return {
+        "cartesian_rmse": float(np.sqrt(np.mean(error**2))),
+        "cartesian_max_error": float(np.max(error_norm)),
+        "cartesian_final_error": float(error_norm[-1]),
+        "cartesian_mean_error": float(np.mean(error_norm)),
+    }

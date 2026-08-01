@@ -1,0 +1,38 @@
+{
+  "created_at": "2026-08-01T10:16:18",
+  "scenario": "nominal",
+  "scenario_config": {
+    "name": "nominal",
+    "measurement_noise_std": 0.0,
+    "velocity_noise_std": 0.0,
+    "observation_delay_steps": 0,
+    "reference_step_time": null,
+    "reference_step_ramp": 0.8,
+    "seed": 7
+  },
+  "backend": "coppeliasim",
+  "controller": "fuzzy-pid",
+  "trajectory": "cartesian_loop",
+  "dt": 0.05,
+  "duration": 4.0,
+  "robot": "NiryoOne",
+  "metrics": {
+    "joint_rmse": 0.18094122307245702,
+    "joint_max_abs_error": 0.7817494812114811,
+    "final_error_norm": 0.01038784466632342,
+    "control_energy": 0.08235837699809126,
+    "action_smoothness": 0.017160231199098323,
+    "constraint_violations": 0,
+    "settling_time": 2.25,
+    "mean_error_norm": 0.2845435977462954,
+    "error_norm_std": 0.3398136227748004,
+    "correction_sign_flip_ratio": 0.027083333333333334,
+    "high_frequency_error_index": 0.003544785456453994
+  },
+  "cartesian_metrics": {
+    "cartesian_rmse": 0.09561287756136283,
+    "cartesian_max_error": 0.2972059145292406,
+    "cartesian_final_error": 0.005901077525754348,
+    "cartesian_mean_error": 0.11753476411457804
+  }
+}

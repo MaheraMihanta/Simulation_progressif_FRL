@@ -5,6 +5,7 @@ from pathlib import Path
 import math
 
 from .scenarios import ScenarioConfig
+from .trajectory import SUPPORTED_TRAJECTORIES
 
 
 DEFAULT_JOINT_PATHS: tuple[str, ...] = (
@@ -84,5 +85,6 @@ class ExperimentConfig:
         self.scenario.validate(self.robot.dof, self.simulation.duration)
         if self.controller_name not in {"reference", "pid", "fuzzy-pid"}:
             raise ValueError("controller_name must be 'reference', 'pid' or 'fuzzy-pid'")
-        if self.trajectory_name not in {"multi_sine", "point_to_point"}:
-            raise ValueError("trajectory_name must be 'multi_sine' or 'point_to_point'")
+        if self.trajectory_name not in SUPPORTED_TRAJECTORIES:
+            supported = "', '".join(SUPPORTED_TRAJECTORIES)
+            raise ValueError(f"trajectory_name must be one of '{supported}'")

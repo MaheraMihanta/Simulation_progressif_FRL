@@ -43,6 +43,8 @@ class CoppeliaArmEnv:
             ) from exc
 
     def start(self) -> None:
+        if self.running:
+            return
         self.connect()
         assert self.sim is not None
         if self.simulation_config.synchronous_stepping:
@@ -56,6 +58,12 @@ class CoppeliaArmEnv:
         if q0 is not None:
             for handle, value in zip(self.joint_handles, q0):
                 self.sim.setJointTargetPosition(handle, float(value))
+            if self.running:
+                for _ in range(self.simulation_config.settling_steps):
+                    if self.simulation_config.synchronous_stepping:
+                        self.sim.step()
+                    else:
+                        time.sleep(self.simulation_config.dt)
         return self.read_state()
 
     def read_state(self) -> ArmState:

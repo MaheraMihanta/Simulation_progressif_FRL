@@ -181,6 +181,9 @@ class PIDResidualQLearning6DOFConfig:
     progress_weight: float = 8.0
     goal_reward: float = 12.0
     external_torque: None | Sequence[float] = None
+    external_torque_episode_schedule: None | Sequence[Sequence[float]] = None
+    external_torque_schedule: None | Sequence[Sequence[float]] = None
+    external_torque_segment_steps: int = 120
     start_q: tuple[float, float, float, float, float, float] = (
         0.0,
         0.0,
@@ -228,6 +231,20 @@ class PIDResidualQLearning6DOFConfig:
             torque = np.asarray(self.external_torque, dtype=float)
             if torque.shape != (6,):
                 raise ValueError("external_torque must contain exactly six values.")
+        if self.external_torque_episode_schedule is not None:
+            schedule = np.asarray(self.external_torque_episode_schedule, dtype=float)
+            if schedule.ndim != 2 or schedule.shape[1] != 6 or schedule.shape[0] == 0:
+                raise ValueError(
+                    "external_torque_episode_schedule must have shape (episodes, 6)."
+                )
+        if self.external_torque_schedule is not None:
+            schedule = np.asarray(self.external_torque_schedule, dtype=float)
+            if schedule.ndim != 2 or schedule.shape[1] != 6 or schedule.shape[0] == 0:
+                raise ValueError(
+                    "external_torque_schedule must have shape (steps, 6)."
+                )
+        if self.external_torque_segment_steps <= 0:
+            raise ValueError("external_torque_segment_steps must be strictly positive.")
         for name in (
             "distance_weight",
             "speed_weight",
@@ -344,7 +361,24 @@ def _make_controller(
 
 def _external_torque(
     config: PIDResidualQLearning6DOFConfig,
+    step_index: int = 0,
+    episode_index: int | None = None,
 ) -> np.ndarray | None:
+    if step_index < 0:
+        raise ValueError("step_index must be non-negative.")
+    if episode_index is not None and episode_index < 0:
+        raise ValueError("episode_index must be non-negative.")
+    if config.external_torque_episode_schedule is not None:
+        schedule = np.asarray(config.external_torque_episode_schedule, dtype=float)
+        profile_index = 0 if episode_index is None else episode_index % schedule.shape[0]
+        return schedule[profile_index].copy()
+    if config.external_torque_schedule is not None:
+        schedule = np.asarray(config.external_torque_schedule, dtype=float)
+        profile_index = min(
+            step_index // config.external_torque_segment_steps,
+            schedule.shape[0] - 1,
+        )
+        return schedule[profile_index].copy()
     if config.external_torque is None:
         return None
     return np.asarray(config.external_torque, dtype=float)
@@ -465,7 +499,7 @@ def train_pid_residual_q_learning_6dof(
             )
             next_observation, _, done, info = env.step(
                 torque,
-                external_torque=_external_torque(cfg),
+                external_torque=_external_torque(cfg, step_count - 1, episode),
             )
             distance = float(next_observation["distance"])
             speed = float(next_observation["speed"])
@@ -568,7 +602,7 @@ def train_pid_factorized_residual_q_learning_6dof(
             )
             next_observation, _, done, info = env.step(
                 torque,
-                external_torque=_external_torque(cfg),
+                external_torque=_external_torque(cfg, step_count - 1, episode),
             )
             distance = float(next_observation["distance"])
             speed = float(next_observation["speed"])
@@ -657,7 +691,7 @@ def rollout_pid_residual_q_policy_6dof(
     residual_disabled = False
     residual_switch_step: int | None = None
 
-    for _ in range(cfg.max_steps_per_episode):
+    for step_index in range(cfg.max_steps_per_episode):
         action = 0 if residual_disabled else int(np.argmax(q_table[state]))
         base_acceleration = controller.compute(goal_q, observation["q"], env_config.dt)
         residual_command = actions[action]
@@ -671,7 +705,7 @@ def rollout_pid_residual_q_policy_6dof(
         )
         observation, _, done, info = env.step(
             torque,
-            external_torque=_external_torque(cfg),
+            external_torque=_external_torque(cfg, step_index),
         )
         distance = float(observation["distance"])
         speed = float(observation["speed"])
@@ -771,7 +805,7 @@ def rollout_pid_factorized_residual_q_policy_6dof(
     residual_disabled = False
     residual_switch_step: int | None = None
 
-    for _ in range(cfg.max_steps_per_episode):
+    for step_index in range(cfg.max_steps_per_episode):
         if residual_disabled:
             local_actions = np.zeros(6, dtype=int)
         else:
@@ -791,7 +825,7 @@ def rollout_pid_factorized_residual_q_policy_6dof(
         )
         observation, _, done, info = env.step(
             torque,
-            external_torque=_external_torque(cfg),
+            external_torque=_external_torque(cfg, step_index),
         )
         distance = float(observation["distance"])
         speed = float(observation["speed"])

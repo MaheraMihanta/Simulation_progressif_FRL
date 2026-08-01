@@ -15,6 +15,7 @@ from fuzzy_drl_sim import (
     ExperimentConfig,
     RobotConfig,
     SimulationConfig,
+    SUPPORTED_TRAJECTORIES,
     available_scenarios,
     run_tracking_experiment,
     scenario_from_name,
@@ -33,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--trajectory",
-        choices=["multi_sine", "point_to_point"],
+        choices=SUPPORTED_TRAJECTORIES,
         default="multi_sine",
     )
     parser.add_argument("--scenario", choices=available_scenarios(), default="nominal")

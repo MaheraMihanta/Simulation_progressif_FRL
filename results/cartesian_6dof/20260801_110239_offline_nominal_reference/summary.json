@@ -1,0 +1,38 @@
+{
+  "created_at": "2026-08-01T11:02:40",
+  "scenario": "nominal",
+  "scenario_config": {
+    "name": "nominal",
+    "measurement_noise_std": 0.0,
+    "velocity_noise_std": 0.0,
+    "observation_delay_steps": 0,
+    "reference_step_time": null,
+    "reference_step_ramp": 0.8,
+    "seed": 7
+  },
+  "backend": "offline",
+  "controller": "reference",
+  "trajectory": "cartesian_loop",
+  "dt": 0.05,
+  "duration": 2.0,
+  "robot": "NiryoOne",
+  "metrics": {
+    "joint_rmse": 0.120484712742297,
+    "joint_max_abs_error": 0.4983189432239703,
+    "final_error_norm": 0.007145969549697318,
+    "control_energy": 0.0,
+    "action_smoothness": 0.0,
+    "constraint_violations": 0,
+    "settling_time": 1.3,
+    "mean_error_norm": 0.20584195004939515,
+    "error_norm_std": 0.21149110531515325,
+    "correction_sign_flip_ratio": 0.0,
+    "high_frequency_error_index": 0.0036295607459555547
+  },
+  "cartesian_metrics": {
+    "cartesian_rmse": 0.10589819871381308,
+    "cartesian_max_error": 0.4000257847823831,
+    "cartesian_final_error": 0.008217208004834251,
+    "cartesian_mean_error": 0.12070261944741846
+  }
+}

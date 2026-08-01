@@ -138,6 +138,21 @@ class PIDResidualQLearning6DOFTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             PIDResidualQLearning6DOFConfig(external_torque=(1.0, 2.0, 3.0, 4.0))
 
+    def test_learning_config_rejects_invalid_external_torque_schedule(self) -> None:
+        with self.assertRaises(ValueError):
+            PIDResidualQLearning6DOFConfig(
+                external_torque_episode_schedule=((0.0, -1.0),),
+            )
+        with self.assertRaises(ValueError):
+            PIDResidualQLearning6DOFConfig(
+                external_torque_schedule=((0.0, -1.0),),
+            )
+        with self.assertRaises(ValueError):
+            PIDResidualQLearning6DOFConfig(
+                external_torque_schedule=((0.0, -1.0, 0.0, 0.0, 0.0, 0.0),),
+                external_torque_segment_steps=0,
+            )
+
     def test_training_accepts_external_torque(self) -> None:
         env_config = Arm6DOFDynamicEnvConfig(max_steps=20)
         encoder = PIDResidualStateEncoder6DOF()
@@ -155,6 +170,53 @@ class PIDResidualQLearning6DOFTests(unittest.TestCase):
         )
 
         self.assertEqual(result.q_value.shape, (encoder.n_states, 13))
+        self.assertTrue(np.all(np.isfinite(result.q_value)))
+
+    def test_factorized_training_accepts_changing_external_torque(self) -> None:
+        env_config = Arm6DOFDynamicEnvConfig(max_steps=20)
+        encoder = PIDResidualStateEncoder6DOF()
+        learning_config = PIDResidualQLearning6DOFConfig(
+            episodes=2,
+            max_steps_per_episode=5,
+            residual_mode="torque",
+            external_torque_schedule=(
+                (0.0, -1.0, 0.0, 0.0, 0.0, 0.0),
+                (0.0, -1.0, -0.5, 0.0, 0.0, 0.0),
+            ),
+            external_torque_segment_steps=2,
+            seed=17,
+        )
+
+        result = train_pid_factorized_residual_q_learning_6dof(
+            env_config,
+            encoder=encoder,
+            config=learning_config,
+        )
+
+        self.assertEqual(result.q_value.shape, (encoder.n_states, 6, 3))
+        self.assertTrue(np.all(np.isfinite(result.q_value)))
+
+    def test_factorized_training_accepts_episode_external_torque_schedule(self) -> None:
+        env_config = Arm6DOFDynamicEnvConfig(max_steps=20)
+        encoder = PIDResidualStateEncoder6DOF()
+        learning_config = PIDResidualQLearning6DOFConfig(
+            episodes=3,
+            max_steps_per_episode=5,
+            residual_mode="torque",
+            external_torque_episode_schedule=(
+                (0.0, -1.0, 0.0, 0.0, 0.0, 0.0),
+                (0.0, -1.0, -0.5, 0.0, 0.0, 0.0),
+            ),
+            seed=19,
+        )
+
+        result = train_pid_factorized_residual_q_learning_6dof(
+            env_config,
+            encoder=encoder,
+            config=learning_config,
+        )
+
+        self.assertEqual(result.q_value.shape, (encoder.n_states, 6, 3))
         self.assertTrue(np.all(np.isfinite(result.q_value)))
 
     def test_zero_q_table_keeps_adaptive_pid_controller_stable(self) -> None:

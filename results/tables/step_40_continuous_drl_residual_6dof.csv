@@ -1,0 +1,6 @@
+backend,controller,algorithm,trajectory,duration,timesteps,action_mode,residual_scale,final_joint_error,mean_joint_error,final_cartesian_error,mean_cartesian_error,constraint_violations,run_dir
+offline,fuzzy-pid,,cartesian_loop,2.0,,baseline,,5.259955e-03,1.781497e-01,6.577387e-03,1.520677e-01,0,results/cartesian_6dof/20260801_110239_offline_nominal_fuzzy-pid
+offline,sac-residual,sac,cartesian_loop,2.0,300,residual,0.05,5.565714e-03,1.825701e-01,6.938709e-03,1.557495e-01,0,results/drl_6dof/20260801_110708_offline_sac_cartesian_loop
+offline,td3-residual,td3,cartesian_loop,2.0,300,residual,0.05,1.028038e-02,1.826637e-01,1.056859e-02,1.560749e-01,0,results/drl_6dof/20260801_110759_offline_td3_cartesian_loop
+coppeliasim,fuzzy-pid,,cartesian_loop,0.5,,baseline,,1.234540e+00,7.905257e-01,3.740926e-01,2.068772e-01,0,results/cartesian_6dof/20260801_110842_coppelia_nominal_fuzzy-pid
+coppeliasim,sac-residual,sac,cartesian_loop,0.5,20,residual,0.05,1.059206e+00,8.080457e-01,3.688426e-01,2.795433e-01,0,results/drl_6dof/20260801_110759_coppelia_sac_cartesian_loop

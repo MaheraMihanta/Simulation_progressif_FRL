@@ -1,0 +1,27 @@
+{
+  "backend": "coppelia",
+  "algorithm": "sac",
+  "trajectory": "cartesian_loop",
+  "timesteps": 20,
+  "learning_starts": 5,
+  "batch_size": 8,
+  "action_mode": "residual",
+  "residual_scale": 0.05,
+  "duration": 0.5,
+  "dt": 0.05,
+  "seed": 29,
+  "tensorboard": false,
+  "start_from_current_state": false,
+  "model_path": "results\\drl_6dof\\20260801_110759_coppelia_sac_cartesian_loop\\sac_fuzzy_guided_6dof.zip",
+  "evaluation": {
+    "episodes": 1,
+    "steps": 11,
+    "mean_return": -18.23301923390455,
+    "mean_final_error_norm": 1.0592056448827345,
+    "mean_error_norm": 0.8080457380042776,
+    "max_error_norm": 1.1287467576844523,
+    "mean_final_cartesian_error_norm": 0.36884258197377356,
+    "mean_cartesian_error_norm": 0.27954334777637596,
+    "constraint_violations": 0
+  }
+}
